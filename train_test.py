@@ -1,7 +1,3 @@
-# import torch
-# import torch.nn as nn
-# import torch.nn.functional as F
-# import numpy as np
 import gc
 from pytorch_toolbelt import losses as L
 from matplotlib.pyplot import imsave, imshow
@@ -48,7 +44,8 @@ def save_images(data, output, target, epoch, testflag):
 
     save_folder = "/content/drive/MyDrive/SEM_project/masks"
     # Convert tensors to numpy arrays
-    for i in range(FLAGS.batch_size):
+    # for i in range(FLAGS.batch_size):
+    for i in range(1):
         data_np = data[i].cpu().numpy().squeeze()
         output_np = output[i].cpu().numpy().squeeze()
         target_np = target[i].cpu().numpy().squeeze()

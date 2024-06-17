@@ -1,3 +1,4 @@
+from sklearn.model_selection import train_test_split
 from data import*
 from model import *
 from train_test import *

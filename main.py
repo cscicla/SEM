@@ -9,10 +9,14 @@ from torch.utils.data import DataLoader
 import gc
 import argparse
 import shutil
-from pathlib import Path
-import matplotlib.pyplot as plt
+# from pathlib import Path
+# import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 
+# from sklearn.preprocessing import MultiLabelBinarizer
+# from sklearn.metrics import f1_score
+# import cv2 as cv
+# from PIL.ImageOps import grayscale
 
 def split_data(image_dir, label_dir, train_image_dir, train_label_dir, test_image_dir, test_label_dir, test_size=0.2):
     image_dir = Path(image_dir)
@@ -63,15 +67,12 @@ def run_main(FLAGS, file):
     model = UNet_PV().to(device)
     save_folder = Path("/home/crcvreu.student10/SEM/masks")
     # Create the folder if it doesn't exist
-    # save_folder.mkdir(parents=True, exist_ok=True)
     checkpoint_folder = Path("/home/crcvreu.student10/SEM/checkpoints")
-    # checkpoint_folder.mkdir(parents=True, exist_ok=True)
     optimizer = optim.Adam(model.parameters(), lr=FLAGS.learning_rate)
 
     # Create transformations to apply to each data sample
     transform = transforms.Compose([
         transforms.ToTensor(),
-        # transforms.Resize((224, 224), interpolation=transforms.InterpolationMode.NEAREST_EXACT),
         transforms.Normalize((0.5), (0.5))
          ])
     criterion = nn.CrossEntropyLoss()
@@ -86,7 +87,7 @@ def run_main(FLAGS, file):
     test_label_dir = Path('/home/crcvreu.student10/SEM/test/output/')
 
     # Split data into training and test sets
-    split_data(image_dir, label_dir, train_image_dir, train_label_dir, test_image_dir, test_label_dir)
+    # split_data(image_dir, label_dir, train_image_dir, train_label_dir, test_image_dir, test_label_dir)
 
     # Load datasets for training and testing
     # Inbuilt datasets available in torchvision (check documentation online)
@@ -97,71 +98,67 @@ def run_main(FLAGS, file):
     test_loader = DataLoader(dataset2, batch_size=FLAGS.batch_size,
                              shuffle=False, num_workers=2)
 
-    best_accuracy = 0.0
+    # best_accuracy = 0.0
     checkpoint_path = '/home/crcvreu.student10/SEM/checkpoints/model_filled2.pth'
+    # checkpoint_path = '/Users/claire/Downloads/SEM_project_python/checkpoints/model_filled2.pth'
     train_losses = []
     train_accs = []
     test_losses = []
     test_accs = []
     if not os.path.isfile(checkpoint_path):
-      # Run training for n_epochs specified in config
-      for epoch in range(1, FLAGS.num_epochs + 1):
-          train_loss, train_acc = train(model, device, train_loader,
-                                        optimizer, criterion, epoch,
-                                        FLAGS.batch_size, file, class_weights)
-          test_loss, test_acc = test(model, device, test_loader,
-                                     file, epoch, class_weights)
-          train_losses.append(train_loss)
-          train_accs.append(train_acc)
-          test_losses.append(test_loss)
-          test_accs.append(test_acc)
-          torch.save({
-          'epoch': epoch,
-          'model_state_dict': model.state_dict(),
-          'optimizer_state_dict': optimizer.state_dict(),
-          'train_losses': train_losses,
-          'test_losses': test_losses,
-          'train_accs': train_accs,
-          'test_accs': test_accs
-          }, checkpoint_path)
+        # Run training for n_epochs specified in config
+        for epoch in range(1, FLAGS.num_epochs + 1):
+            train_loss, train_acc = train(model, device, train_loader,
+                                            optimizer, criterion, epoch,
+                                            FLAGS.batch_size, file, class_weights)
+            test_loss, test_acc = test(model, device, test_loader,
+                                        file, epoch, class_weights)
+            train_losses.append(train_loss)
+            train_accs.append(train_acc)
+            test_losses.append(test_loss)
+            test_accs.append(test_acc)
+            torch.save({
+            'epoch': epoch,
+            'model_state_dict': model.state_dict(),
+            'optimizer_state_dict': optimizer.state_dict(),
+            'train_losses': train_losses,
+            'test_losses': test_losses,
+            'train_accs': train_accs,
+            'test_accs': test_accs
+            }, checkpoint_path)
 
     else:
-      checkpoint = torch.load(checkpoint_path)
-      model.load_state_dict(checkpoint['model_state_dict'])
-      optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-      epoch = checkpoint['epoch']
-      train_losses = checkpoint['train_losses']
-      test_losses = checkpoint['test_losses']
-      train_accs = checkpoint['train_accs']
-      test_accs = checkpoint['test_accs']
+        checkpoint = torch.load(checkpoint_path)
+        model.load_state_dict(checkpoint['model_state_dict'])
+        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        epoch = checkpoint['epoch']
+        train_losses = checkpoint['train_losses']
+        test_losses = checkpoint['test_losses']
+        train_accs = checkpoint['train_accs']
+        test_accs = checkpoint['test_accs']
 
-      for epoch_i in range(epoch+1, FLAGS.num_epochs + 1):
-          train_loss, train_acc = train(model, device, train_loader,
-                                        optimizer, criterion, epoch_i,
-                                        FLAGS.batch_size, file,class_weights)
-          test_loss, test_acc = test(model, device, test_loader, file,
-                                     epoch_i, class_weights)
-          train_losses.append(train_loss)
-          train_accs.append(train_acc)
-          test_losses.append(test_loss)
-          test_accs.append(test_acc)
-          torch.save({
-          'epoch': epoch,
-          'model_state_dict': model.state_dict(),
-          'optimizer_state_dict': optimizer.state_dict(),
-          'train_losses': train_losses,
-          'test_losses': test_losses,
-          'train_accs': train_accs,
-          'test_accs': test_accs
-          }, checkpoint_path)
-
-        # if test_accuracy > best_accuracy:
-        #     best_accuracy = test_accuracy
-    # print("accuracy is {:2.2f}".format(best_accuracy))
-    # file.write("accuracy is {:2.2f}".format(best_accuracy))
+        for epoch_i in range(epoch+1, FLAGS.num_epochs + 1):
+            train_loss, train_acc = train(model, device, train_loader,
+                                            optimizer, criterion, epoch_i,
+                                            FLAGS.batch_size, file,class_weights)
+            test_loss, test_acc = test(model, device, test_loader, file,
+                                        epoch_i, class_weights)
+            train_losses.append(train_loss)
+            train_accs.append(train_acc)
+            test_losses.append(test_loss)
+            test_accs.append(test_acc)
+            torch.save({
+            'epoch': epoch,
+            'model_state_dict': model.state_dict(),
+            'optimizer_state_dict': optimizer.state_dict(),
+            'train_losses': train_losses,
+            'test_losses': test_losses,
+            'train_accs': train_accs,
+            'test_accs': test_accs
+            }, checkpoint_path)
     torch.save(model, '/home/crcvreu.student10/SEM/final_model_filled2.pth')
-
-    print("Training and evaluation finished")
+    
+    # print("Training and evaluation finished")
 
     plt.plot(train_losses)
     plt.savefig("/home/crcvreu.student10/SEM/graphs/Train_loss_model.jpg")
@@ -175,6 +172,8 @@ def run_main(FLAGS, file):
     plt.plot(test_accs)
     plt.savefig("/home/crcvreu.student10/SEM/graphs/Test_acc_model.jpg")
     plt.clf()
+
+    eval()
     file.write("\nTraining and evaluation finished")
 
 
@@ -190,7 +189,7 @@ if __name__ == '__main__':
                         help='Initial learning rate.')
     parser.add_argument('--num_epochs',
                         type=int,
-                        default=280,
+                        default=5,
                         help='Number of epochs to run trainer.')
     parser.add_argument('--batch_size',
                         type=int, default=1,
