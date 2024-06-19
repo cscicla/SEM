@@ -12,7 +12,7 @@
 
 source activate semenv
 
-python SEM_project_newton/sem_project.py
+python sem_project.py
 
 # module load anaconda/anaconda3
 # module load cuda/cuda-10.2

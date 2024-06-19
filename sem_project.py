@@ -671,7 +671,7 @@ def run_main(FLAGS, file):
                 'test_f1_scores': test_f1_scores
             }, checkpoint_path)
         else:
-            epochs_wo += 1
+            epochs_wo_improve += 1
             if epochs_wo_improve >= early_stopping_patience:
                 print("Early stopping triggered")
                 break
