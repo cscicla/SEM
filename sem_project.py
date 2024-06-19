@@ -553,10 +553,10 @@ def split_data(image_dir, label_dir, train_image_dir, train_label_dir, test_imag
 
     train_images, test_images, train_labels, test_labels = train_test_split(images, labels, test_size=test_size, random_state=42)
 
-    os.makedirs(train_image_dir, exist_ok=True)
-    os.makedirs(train_label_dir, exist_ok=True)
-    os.makedirs(test_image_dir, exist_ok=True)
-    os.makedirs(test_label_dir, exist_ok=True)
+    # os.makedirs(train_image_dir, exist_ok=True)
+    # os.makedirs(train_label_dir, exist_ok=True)
+    # os.makedirs(test_image_dir, exist_ok=True)
+    # os.makedirs(test_label_dir, exist_ok=True)
 
     for image, label in zip(train_images, train_labels):
         shutil.move(os.path.join(image_dir, image), os.path.join(train_image_dir, image))
@@ -579,9 +579,9 @@ def run_main(FLAGS, file):
     model = UNet_PV().to(device)
     save_folder = "/home/crcvreu.student10/SEM/masks"
     # Create the folder if it doesn't exist
-    os.makedirs(save_folder, exist_ok=True)
+    # os.makedirs(save_folder, exist_ok=True)
     checkpoint_folder = "/home/crcvreu.student10/SEM/checkpoints"
-    os.makedirs(checkpoint_folder, exist_ok=True)
+    # os.makedirs(checkpoint_folder, exist_ok=True)
     optimizer = optim.Adam(model.parameters(), lr=FLAGS.learning_rate)
 
     # Create transformations to apply to each data sample
@@ -679,39 +679,25 @@ def run_main(FLAGS, file):
     torch.save(model, '/home/crcvreu.student10/SEM/final_model_filled2.pth')
     print("Training and evaluation finished")
 
-    plt.plot(train_losses)
+    plt.plot(train_losses, label='train loss')
+    plt.plot(test_losses, label='test loss')
     plt.xlabel('Epochs')
-    plt.ylabel('Train Losses')
-    plt.title('Train Losses')
+    plt.ylabel('Losses')
+    plt.title('Train and Test Losses')
+    plt.legend()
     plt.grid(True)
-    plt.savefig("/home/crcvreu.student10/SEM/graphs/Train_loss_model.jpg")
+    plt.savefig("/home/crcvreu.student10/SEM/graphs/Train_Test_loss_model.jpg")
     plt.clf()
     plt.show()
 
-    plt.plot(train_accs)
+    plt.plot(train_accs, label='train accuracy')
+    plt.plot(test_accs, label='test accuracy')
     plt.xlabel('Epochs')
-    plt.ylabel('Train Accuracy')
-    plt.title('Train Accuracy')
+    plt.ylabel('Accuracy')
+    plt.title('Train and Test Accuracy')
+    plt.legend()
     plt.grid(True)
-    plt.savefig("/home/crcvreu.student10/SEM/graphs/Train_acc_model.jpg")
-    plt.clf()
-    plt.show()
-
-    plt.plot(test_losses)
-    plt.xlabel('Epochs')
-    plt.ylabel('Test Losses')
-    plt.title('Test Losses')
-    plt.grid(True)
-    plt.savefig("/home/crcvreu.student10/SEM/graphs/Test_loss_model.jpg")
-    plt.clf()
-    plt.show()
-
-    plt.plot(test_accs)
-    plt.xlabel('Epochs')
-    plt.ylabel('Test Accuracy')
-    plt.title('Test Accuracy')
-    plt.grid(True)
-    plt.savefig("/home/crcvreu.student10/SEM/graphs/Test_acc_model.jpg")
+    plt.savefig("/home/crcvreu.student10/SEM/graphs/Train_Test_acc_model.jpg")
     plt.clf()
     plt.show()
 
@@ -724,7 +710,7 @@ def run_main(FLAGS, file):
     plt.xlabel('Epochs')
     plt.ylabel('Train F1')
     plt.title('Train F1 per class')
-    plt.legend(classes)
+    plt.legend(classes, loc='upper left')
     plt.grid(True)
     plt.savefig("/home/crcvreu.student10/SEM/graphs/Train_f1_per_class_model.jpg")
     plt.clf()
@@ -737,7 +723,7 @@ def run_main(FLAGS, file):
     plt.xlabel('Epochs')
     plt.ylabel('Test F1')
     plt.title('Test F1 per class')
-    plt.legend(classes)
+    plt.legend(classes, loc='upper left')
     plt.grid(True)
     plt.savefig("/home/crcvreu.student10/SEM/graphs/Test_f1_per_class_model.jpg")
     plt.clf()
@@ -746,7 +732,7 @@ def run_main(FLAGS, file):
     plt.plot(train_f1_scores)
     plt.xlabel('Epochs')
     plt.ylabel('Train F1')
-    plt.title('Test Accuracy')
+    plt.title('Train F1 Scores')
     plt.grid(True)
     plt.savefig("/home/crcvreu.student10/SEM/graphs/Train_f1_model.jpg")
     plt.clf()
@@ -755,7 +741,7 @@ def run_main(FLAGS, file):
     plt.plot(test_f1_scores)
     plt.xlabel('Epochs')
     plt.ylabel('Test F1')
-    plt.title('Test Accuracy')
+    plt.title('Test F1 Scores')
     plt.grid(True)
     plt.savefig("/home/crcvreu.student10/SEM/graphs/Test_f1_model.jpg")
     plt.clf()
@@ -852,7 +838,7 @@ for filename in os.listdir(img_dir):
         cv2.imshow(pred_mask)
 
         # Save images as PNG files with epoch number in the filename
-        os.makedirs("/home/crcvreu.student10/SEM/masks/final", exist_ok=True)
+        # os.makedirs("/home/crcvreu.student10/SEM/masks/final", exist_ok=True)
         imsave(os.path.join("/home/crcvreu.student10/SEM/masks/final", os.path.splitext(os.path.basename(file_path))[0] + "_final.png"), pred_mask)
 
         plt.clf()
