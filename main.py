@@ -65,9 +65,9 @@ def run_main(FLAGS, file):
     file.write("\n\nTorch device selected: " + str(device) + '\n')
     # Initialize the model and send to device
     model = UNet_PV().to(device)
-    save_folder = Path("/home/crcvreu.student10/SEM/masks")
+    save_folder = Path("/Users/claire/Downloads/SEM_project_python/masks")
     # Create the folder if it doesn't exist
-    checkpoint_folder = Path("/home/crcvreu.student10/SEM/checkpoints")
+    checkpoint_folder = Path("/Users/claire/Downloads/SEM_project_python/checkpoints")
     optimizer = optim.Adam(model.parameters(), lr=FLAGS.learning_rate)
 
     # Create transformations to apply to each data sample
@@ -79,12 +79,12 @@ def run_main(FLAGS, file):
     class_weights = torch.Tensor([1, 1, 1.5, 1, 1.5, 1.5]).to(device)
 
     #################### LOAD DATA ####################
-    image_dir = Path('/home/crcvreu.student10/SEM/data/')
-    label_dir = Path('/home/crcvreu.student10/SEM/output')
-    train_image_dir = Path('/home/crcvreu.student10/SEM/train/data/')
-    train_label_dir = Path('/home/crcvreu.student10/SEM/train/output/')
-    test_image_dir = Path('/home/crcvreu.student10/SEM/test/data/')
-    test_label_dir = Path('/home/crcvreu.student10/SEM/test/output/')
+    image_dir = Path('/Users/claire/Downloads/SEM_project_python/data/')
+    label_dir = Path('/Users/claire/Downloads/SEM_project_python/output')
+    train_image_dir = Path('/Users/claire/Downloads/SEM_project_python/train/data/')
+    train_label_dir = Path('/Users/claire/Downloads/SEM_project_python/train/output/')
+    test_image_dir = Path('/Users/claire/Downloads/SEM_project_python/test/data/')
+    test_label_dir = Path('/Users/claire/Downloads/SEM_project_python/test/output/')
 
     # Split data into training and test sets
     # split_data(image_dir, label_dir, train_image_dir, train_label_dir, test_image_dir, test_label_dir)
@@ -99,8 +99,8 @@ def run_main(FLAGS, file):
                              shuffle=False, num_workers=2)
 
     # best_accuracy = 0.0
-    checkpoint_path = '/home/crcvreu.student10/SEM/checkpoints/model_filled2.pth'
-    # checkpoint_path = '/Users/claire/Downloads/SEM_project_python/checkpoints/model_filled2.pth'
+    checkpoint_path = '/Users/claire/Downloads/SEM_project_python/checkpoints/model_filled2.pth'
+    # checkpoint_path = '/Users/claire/Downloadsclai_project_pythonre/Downloads/SEM_project_python/checkpoints/model_filled2.pth'
     train_losses = []
     train_accs = []
     test_losses = []
@@ -156,24 +156,23 @@ def run_main(FLAGS, file):
             'train_accs': train_accs,
             'test_accs': test_accs
             }, checkpoint_path)
-    torch.save(model, '/home/crcvreu.student10/SEM/final_model_filled2.pth')
+    torch.save(model, '/Users/claire/Downloads/SEM_project_python/final_model_filled2.pth')
     
     # print("Training and evaluation finished")
 
     plt.plot(train_losses)
-    plt.savefig("/home/crcvreu.student10/SEM/graphs/Train_loss_model.jpg")
+    plt.savefig("/Users/claire/Downloads/SEM_project_python/graphs/Train_loss_model.jpg")
     plt.clf()
     plt.plot(train_accs)
-    plt.savefig("/home/crcvreu.student10/SEM/graphs/Train_acc_model.jpg")
+    plt.savefig("/Users/claire/Downloads/SEM_project_python/graphs/Train_acc_model.jpg")
     plt.clf()
     plt.plot(test_losses)
-    plt.savefig("/home/crcvreu.student10/SEM/graphs/Test_loss_model.jpg")
+    plt.savefig("/Users/claire/Downloads/SEM_project_python/graphs/Test_loss_model.jpg")
     plt.clf()
     plt.plot(test_accs)
-    plt.savefig("/home/crcvreu.student10/SEM/graphs/Test_acc_model.jpg")
+    plt.savefig("/Users/claire/Downloads/SEM_project_python/graphs/Test_acc_model.jpg")
     plt.clf()
 
-    eval()
     file.write("\nTraining and evaluation finished")
 
 

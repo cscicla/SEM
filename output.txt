@@ -1,3 +1,24 @@
 
 
 Torch device selected: cpu
+
+
+Torch device selected: cpu
+
+
+Torch device selected: cpu
+
+
+Torch device selected: cpu
+
+
+Torch device selected: cpu
+
+
+Torch device selected: cpu
+
+
+Torch device selected: cpu
+
+
+Torch device selected: cpu
