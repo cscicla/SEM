@@ -23,15 +23,18 @@ import argparse
 import gc
 from pytorch_toolbelt import losses as L
 
+from IPython.display import display
+from PIL.ImageOps import grayscale
+from pathlib import Path
+from sklearn.preprocessing import MultiLabelBinarizer
+import cv2 as cv
+import cv2 
+
 # import time
 # from torchvision.io import read_image
-# from PIL.ImageOps import grayscale
-# from pathlib import Path
 # from skimage.transform import resize
 # # pip install pytorch-toolbelt
-# # from google.colab.patches import cv2_imshow
-# import cv2 as cv
-# from sklearn.preprocessing import MultiLabelBinarizer
+# # from google.colab.patches import cv2.imshow
 # import json
 # from PIL import Image
 # import shutil
@@ -329,7 +332,7 @@ def save_images(data, output, target, epoch, testflag):
     '''
         save the original image, ground_truth/ target mask, and predicted mask
     '''
-    # save_folder = "/content/drive/MyDrive/SEM_project_python/masks/"
+    # save_folder = "/home/crcvreu.student10/SEM_python/masks/"
     save_folder = "/home/crcvreu.student10/SEM/masks/"
     
     # Convert tensors to numpy arrays
@@ -668,8 +671,8 @@ def run_main(FLAGS, file):
                 'test_f1_scores': test_f1_scores
             }, checkpoint_path)
         else:
-            epochs_no_improve += 1
-            if epochs_no_improve >= early_stopping_patience:
+            epochs_wo += 1
+            if epochs_wo_improve >= early_stopping_patience:
                 print("Early stopping triggered")
                 break
 
@@ -792,3 +795,74 @@ if __name__ == '__main__':
 
         run_main(FLAGS, f)
 
+print('main done')
+# Check if cuda is available
+use_cuda = torch.cuda.is_available()
+# Set proper device based on cuda availability
+device = torch.device("cuda" if use_cuda else "cpu")
+
+model = UNet_PV().to(device)
+model = torch.load('/home/crcvreu.student10/SEM/final_model_filled2.pth')
+model.eval()
+
+trans = transforms.Compose([
+    transforms.ToTensor(),
+    transforms.Normalize((0.5), (0.5))
+ ])
+
+classes = ["background", "silver", "glass", "silicon", "void", "interfacial void"]
+f1_dict = {"background":[], "silver":[], "glass":[], "silicon":[], "void":[], "interfacial void":[]}
+
+img_dir = '/home/crcvreu.student10/SEM/train/data/'
+for filename in os.listdir(img_dir):
+  file_path = Path(img_dir + filename)
+  if file_path.suffix == '.png' or file_path.suffix == '.tif' or file_path.suffix == '.jpg':
+        # Print OG photo
+        print(filename)
+        image = Image.open(file_path)
+        image = image.resize((1024, 768))
+        plt.clf()
+        display(image)
+
+        #print target mask
+        mask_dir = "/home/crcvreu.student10/SEM/train/output/"
+        label_name = mask_dir + os.path.basename(os.path.splitext(filename)[0]) + '_label.npy'
+        label_np = np.load(label_name)
+        label = torch.from_numpy(label_np) # convert label to tensor
+        target_np = label.cpu().numpy().squeeze()
+        label_mask = get_mask(target_np)
+        # label_mask = cv.resize(cv.cvtColor(label_mask, cv.COLOR_BGR2RGB), (1024, 768))
+        label_mask = cv.resize(label_mask, (1024, 768))
+
+        cv2.imshow(label_mask)
+
+        # print predicted mask
+        image = grayscale(image)
+        image = trans(image)
+        image = image.to(device)
+        image = image.unsqueeze(0)
+        print('predicted')
+        print("IMAGE DIMS: ", image.shape)
+        pred = model(image)
+        pred = F.softmax(pred, dim=1)
+        pred = torch.argmax(pred, dim=1)
+        pred = pred.cpu().numpy().squeeze()
+        pred_mask = get_mask(pred)
+        # pred_mask = cv.cvtColor(pred_mask, cv.COLOR_BGR2RGB)
+        cv2.imshow(pred_mask)
+
+        # Save images as PNG files with epoch number in the filename
+        os.makedirs("/home/crcvreu.student10/SEM/masks/final", exist_ok=True)
+        imsave(os.path.join("/home/crcvreu.student10/SEM/masks/final", os.path.splitext(os.path.basename(file_path))[0] + "_final.png"), pred_mask)
+
+        plt.clf()
+        label = np.load(Path(mask_dir + "/" + os.path.splitext(os.path.basename(file_path))[0] + "_label.npy"))
+        m = MultiLabelBinarizer().fit(label)
+        f1 = f1_score(m.transform(label), m.transform(pred), average=None)
+        if len(f1) != 6:
+            continue
+        for i, class_name in enumerate(classes):
+            f1_dict[class_name].append(f1[i])
+        print(f1_dict)
+for class_name in classes:
+    print(class_name, np.mean(f1_dict[class_name]))
