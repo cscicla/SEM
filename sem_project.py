@@ -771,7 +771,7 @@ if __name__ == '__main__':
                         default='logs',
                         help='Directory to put logging.')
     parser.add_argument('--early_stopping_patience',
-                        type=float, default=15,
+                        type=float, default=25,
                         help= 'Num epochs to wait for lower loss before ending training')
     
     with open('output.txt', 'a') as f:
@@ -819,23 +819,22 @@ for filename in os.listdir(img_dir):
         label_mask = get_mask(target_np)
         # label_mask = cv.resize(cv.cvtColor(label_mask, cv.COLOR_BGR2RGB), (1024, 768))
         label_mask = cv.resize(label_mask, (1024, 768))
-
-        cv2.imshow(label_mask)
+        cv2.imshow('ground truth mask', label_mask)
 
         # print predicted mask
         image = grayscale(image)
         image = trans(image)
         image = image.to(device)
         image = image.unsqueeze(0)
-        print('predicted')
-        print("IMAGE DIMS: ", image.shape)
+        # print('predicted')
+        # print("IMAGE DIMS: ", image.shape)
         pred = model(image)
         pred = F.softmax(pred, dim=1)
         pred = torch.argmax(pred, dim=1)
         pred = pred.cpu().numpy().squeeze()
         pred_mask = get_mask(pred)
         # pred_mask = cv.cvtColor(pred_mask, cv.COLOR_BGR2RGB)
-        cv2.imshow(pred_mask)
+        cv2.imshow('predicted mask', pred_mask)
 
         # Save images as PNG files with epoch number in the filename
         # os.makedirs("/home/crcvreu.student10/SEM/masks/final", exist_ok=True)
