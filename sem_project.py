@@ -688,7 +688,7 @@ def run_main(FLAGS, file):
     plt.grid(True)
     plt.savefig("/home/crcvreu.student10/SEM/graphs/Train_Test_loss_model.jpg")
     plt.clf()
-    plt.show()
+    # plt.show()
 
     plt.plot(train_accs, label='train accuracy')
     plt.plot(test_accs, label='test accuracy')
@@ -714,7 +714,7 @@ def run_main(FLAGS, file):
     plt.grid(True)
     plt.savefig("/home/crcvreu.student10/SEM/graphs/Train_f1_per_class_model.jpg")
     plt.clf()
-    plt.show()
+    # plt.show()
 
     # plt.plot(test_f1_class_scores)
     for class_idx in range(num_classes):
@@ -727,7 +727,7 @@ def run_main(FLAGS, file):
     plt.grid(True)
     plt.savefig("/home/crcvreu.student10/SEM/graphs/Test_f1_per_class_model.jpg")
     plt.clf()
-    plt.show()
+    # plt.show()
 
     plt.plot(train_f1_scores)
     plt.xlabel('Epochs')
@@ -736,7 +736,7 @@ def run_main(FLAGS, file):
     plt.grid(True)
     plt.savefig("/home/crcvreu.student10/SEM/graphs/Train_f1_model.jpg")
     plt.clf()
-    plt.show()
+    # plt.show()
 
     plt.plot(test_f1_scores)
     plt.xlabel('Epochs')
@@ -745,7 +745,7 @@ def run_main(FLAGS, file):
     plt.grid(True)
     plt.savefig("/home/crcvreu.student10/SEM/graphs/Test_f1_model.jpg")
     plt.clf()
-    plt.show()
+    # plt.show()
 
     file.write("\nTraining and evaluation finished")
 
@@ -771,7 +771,7 @@ if __name__ == '__main__':
                         default='logs',
                         help='Directory to put logging.')
     parser.add_argument('--early_stopping_patience',
-                        type=float, default=25,
+                        type=float, default=40,
                         help= 'Num epochs to wait for lower loss before ending training')
     
     with open('output.txt', 'a') as f:
@@ -808,7 +808,7 @@ for filename in os.listdir(img_dir):
         image = Image.open(file_path)
         image = image.resize((1024, 768))
         plt.clf()
-        display(image)
+        # display(image)
 
         #print target mask
         mask_dir = "/home/crcvreu.student10/SEM/train/output/"
@@ -817,9 +817,10 @@ for filename in os.listdir(img_dir):
         label = torch.from_numpy(label_np) # convert label to tensor
         target_np = label.cpu().numpy().squeeze()
         label_mask = get_mask(target_np)
-        # label_mask = cv.resize(cv.cvtColor(label_mask, cv.COLOR_BGR2RGB), (1024, 768))
-        label_mask = cv.resize(label_mask, (1024, 768))
-        cv2.imshow('ground truth mask', label_mask)
+        label_mask = cv.resize(cv.cvtColor(label_mask, cv.COLOR_BGR2RGB), (1024, 768))
+        # label_mask = cv.resize(label_mask, (1024, 768))
+        # cv2.imshow('ground truth mask', label_mask)
+        imsave(os.path.join("/home/crcvreu.student10/SEM/masks/target", os.path.splitext(os.path.basename(file_path))[0] + "_target.png"), pred_mask)
 
         # print predicted mask
         image = grayscale(image)
@@ -834,8 +835,7 @@ for filename in os.listdir(img_dir):
         pred = pred.cpu().numpy().squeeze()
         pred_mask = get_mask(pred)
         # pred_mask = cv.cvtColor(pred_mask, cv.COLOR_BGR2RGB)
-        cv2.imshow('predicted mask', pred_mask)
-
+        # cv2.imshow('predicted mask', pred_mask)
         # Save images as PNG files with epoch number in the filename
         # os.makedirs("/home/crcvreu.student10/SEM/masks/final", exist_ok=True)
         imsave(os.path.join("/home/crcvreu.student10/SEM/masks/final", os.path.splitext(os.path.basename(file_path))[0] + "_final.png"), pred_mask)
