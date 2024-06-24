@@ -28,6 +28,18 @@ from PIL.ImageOps import grayscale
 from pathlib import Path
 from sklearn.preprocessing import MultiLabelBinarizer
 import cv2 as cv
+import cv2 
+
+# import time
+# from torchvision.io import read_image
+# from skimage.transform import resize
+# # pip install pytorch-toolbelt
+# # from google.colab.patches import cv2.imshow
+# import json
+# from PIL import Image
+# import shutil
+# from sklearn.metrics import f1_score
+# import glob
 
 class UNet_PV(nn.Module):
     def __init__(self):
@@ -563,7 +575,7 @@ def run_main(FLAGS, file):
     # os.makedirs(save_folder, exist_ok=True)
     checkpoint_folder = "/home/crcvreu.student10/SEM/checkpoints"
     # os.makedirs(checkpoint_folder, exist_ok=True)
-    optimizer = optim.Adam(model.parameters(), lr=FLAGS.learning_rate)
+    optimizer = optim.Adam(model.parameters(), lr=FLAGS.learning_rate, weight_decay=1e-5)
             # higher weight decay = lower overfitting
 
     # Create transformations to apply to each data sample
