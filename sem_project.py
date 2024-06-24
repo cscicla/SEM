@@ -283,6 +283,7 @@ class PVDataset(Dataset):
 
         if self.transform: # random cropping and flipping to help generalizability
             image = self.transform(image)
+            label = label.unsqueeze(0)
             if random.random() > 0.5:
               image = transforms.functional.hflip(image)
               label = transforms.functional.hflip(label)
@@ -290,8 +291,8 @@ class PVDataset(Dataset):
               i, j, h, w = transforms.RandomCrop.get_params(image, output_size=(512, 384))
               image = transforms.functional.crop(image, i, j, h, w)
               label = transforms.functional.crop(label, i, j, h, w)
-              image = transforms.functional.resize(image, size=(768, 1024))
-              label = transforms.functional.resize(label, size=(768, 1024))
+            image = transforms.functional.resize(image, size=(768, 1024))
+            label = transforms.functional.resize(label, size=(768, 1024))
         return image, label
     
 def get_mask(all_mask):
