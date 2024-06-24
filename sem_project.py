@@ -287,10 +287,11 @@ class PVDataset(Dataset):
               image = transforms.functional.hflip(image)
               label = transforms.functional.hflip(label)
             if random.random() > 0.5:
-              i, j, h, w = transforms.RandomCrop.get_params(
-              image, output_size=(698, 364))
+              i, j, h, w = transforms.RandomCrop.get_params(image, output_size=(512, 384))
               image = transforms.functional.crop(image, i, j, h, w)
               label = transforms.functional.crop(label, i, j, h, w)
+              image = transforms.functional.resize(image, size=(768, 1024))
+              label = transforms.functional.resize(label, size=(768, 1024))
         return image, label
     
 def get_mask(all_mask):
@@ -336,8 +337,7 @@ def save_images(data, output, target, epoch, testflag):
     save_folder = "/home/crcvreu.student10/SEM/masks/"
     
     # Convert tensors to numpy arrays
-    # for i in range(FLAGS.batch_size):
-    for i in range(1):
+    for i in range(FLAGS.batch_size):
         # data[i]: ith image in the batch
         # .cpu(): converting tensors to NumPy arrays require the data to be on the CPU
                 # numpy does not support gpu tensors
@@ -582,7 +582,8 @@ def run_main(FLAGS, file):
     # os.makedirs(save_folder, exist_ok=True)
     checkpoint_folder = "/home/crcvreu.student10/SEM/checkpoints"
     # os.makedirs(checkpoint_folder, exist_ok=True)
-    optimizer = optim.Adam(model.parameters(), lr=FLAGS.learning_rate)
+    optimizer = optim.Adam(model.parameters(), lr=FLAGS.learning_rate, weight_decay=1e-5)
+            # higher weight decay = lower overfitting
 
     # Create transformations to apply to each data sample
     transform = transforms.Compose([
@@ -652,10 +653,8 @@ def run_main(FLAGS, file):
         test_f1_class_scores.append(test_f1_class)
         test_f1_scores.append(test_f1)
 
-    # Check for early stopping
-        if test_loss < best_loss:
-            best_loss = test_loss
-            epochs_wo_improve = 0
+        # Check for early stopping
+        if early_stopping_patience < 1:
             # Save checkpoint
             torch.save({
                 'epoch': epoch,
@@ -671,10 +670,28 @@ def run_main(FLAGS, file):
                 'test_f1_scores': test_f1_scores
             }, checkpoint_path)
         else:
-            epochs_wo_improve += 1
-            if epochs_wo_improve >= early_stopping_patience:
-                print("Early stopping triggered")
-                break
+            if test_loss < best_loss:
+                best_loss = test_loss
+                epochs_wo_improve = 0
+                # Save checkpoint
+                torch.save({
+                    'epoch': epoch,
+                    'model_state_dict': model.state_dict(),
+                    'optimizer_state_dict': optimizer.state_dict(),
+                    'train_losses': train_losses,
+                    'test_losses': test_losses,
+                    'train_accs': train_accs,
+                    'test_accs': test_accs,
+                    'train_f1_class_scores': train_f1_class,
+                    'test_f1_class_scores': test_f1_class,
+                    'train_f1_scores': train_f1_scores,
+                    'test_f1_scores': test_f1_scores
+                }, checkpoint_path)
+            else:
+                epochs_wo_improve += 1
+                if epochs_wo_improve >= early_stopping_patience:
+                    print("Early stopping triggered")
+                    break
 
     torch.save(model, '/home/crcvreu.student10/SEM/final_model_filled2.pth')
     print("Training and evaluation finished")
@@ -757,21 +774,21 @@ if __name__ == '__main__':
                         type=int, default=1,
                         help='Select mode between 1-5.')
     parser.add_argument('--learning_rate',
-                        type=float, default=0.00005,
+                        type=float, default=0.001,
                         help='Initial learning rate.')
     parser.add_argument('--num_epochs',
                         type=int,
-                        default=350,
+                        default=300,
                         help='Number of epochs to run trainer.')
     parser.add_argument('--batch_size',
-                        type=int, default=1,
+                        type=int, default=2,
                         help='Batch size. Must divide evenly into the dataset sizes.')
     parser.add_argument('--log_dir',
                         type=str,
                         default='logs',
                         help='Directory to put logging.')
     parser.add_argument('--early_stopping_patience',
-                        type=float, default=40,
+                        type=float, default=0,
                         help= 'Num epochs to wait for lower loss before ending training')
     
     with open('output.txt', 'a') as f:
