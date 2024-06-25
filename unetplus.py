@@ -33,7 +33,7 @@ class UNet_PV(nn.Module):
     def __init__(self):
         super(UNet_PV, self).__init__()
         ######################## DEFINE THE LAYERS ########################
-        self.dropout = nn.Dropout(p=0.3)
+        self.dropout = nn.Dropout(p=0.4)
         # encoder layers (convolution)
         self.max_pool = nn.MaxPool2d(kernel_size=2)
         self.enc1 = nn.LazyConv2d(64, 3, 1, 1)
@@ -755,14 +755,14 @@ if __name__ == '__main__':
                         type=int, default=1,
                         help='Select mode between 1-5.')
     parser.add_argument('--learning_rate',
-                        type=float, default=0.00005,
+                        type=float, default=0.0001,
                         help='Initial learning rate.')
     parser.add_argument('--num_epochs',
                         type=int,
                         default=300,
                         help='Number of epochs to run trainer.')
     parser.add_argument('--batch_size',
-                        type=int, default=2,
+                        type=int, default=1,
                         help='Batch size. Must divide evenly into the dataset sizes.')
     parser.add_argument('--log_dir',
                         type=str,

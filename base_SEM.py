@@ -762,7 +762,7 @@ if __name__ == '__main__':
                         default=300,
                         help='Number of epochs to run trainer.')
     parser.add_argument('--batch_size',
-                        type=int, default=2,
+                        type=int, default=1,
                         help='Batch size. Must divide evenly into the dataset sizes.')
     parser.add_argument('--log_dir',
                         type=str,

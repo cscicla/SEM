@@ -33,7 +33,7 @@ class UNet_PV(nn.Module):
     def __init__(self):
         super(UNet_PV, self).__init__()
         ######################## DEFINE THE LAYERS ########################
-        self.dropout = nn.Dropout(p=0.3)
+        self.dropout = nn.Dropout(p=0.4)
         # encoder layers (convolution)
         self.max_pool = nn.MaxPool2d(kernel_size=2)
         self.enc1 = nn.LazyConv2d(64, 3, 1, 1)
@@ -563,7 +563,7 @@ def run_main(FLAGS, file):
     # os.makedirs(save_folder, exist_ok=True)
     checkpoint_folder = "/home/crcvreu.student10/SEM/checkpoints"
     # os.makedirs(checkpoint_folder, exist_ok=True)
-    optimizer = optim.Adam(model.parameters(), lr=FLAGS.learning_rate)
+    optimizer = optim.Adam(model.parameters(), lr=FLAGS.learning_rate, weight_decay=0.0005)
             # higher weight decay = lower overfitting
 
     # Create transformations to apply to each data sample
@@ -762,7 +762,7 @@ if __name__ == '__main__':
                         default=300,
                         help='Number of epochs to run trainer.')
     parser.add_argument('--batch_size',
-                        type=int, default=2,
+                        type=int, default=1,
                         help='Batch size. Must divide evenly into the dataset sizes.')
     parser.add_argument('--log_dir',
                         type=str,

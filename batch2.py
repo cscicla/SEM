@@ -798,48 +798,40 @@ classes = ["background", "silver", "glass", "silicon", "void", "interfacial void
 f1_dict = {"background":[], "silver":[], "glass":[], "silicon":[], "void":[], "interfacial void":[]}
 
 img_dir = '/home/crcvreu.student10/SEM/train/data/'
-for filename in os.listdir(img_dir):
-  file_path = Path(img_dir + filename)
-  if file_path.suffix == '.png' or file_path.suffix == '.tif' or file_path.suffix == '.jpg':
+for file_path in img_dir.iterdir():
+    if file_path.suffix in {'.png', '.tif', '.jpg'}:
         # Print OG photo
-        print(filename)
+        print(file_path.name)
         image = Image.open(file_path)
         image = image.resize((1024, 768))
         plt.clf()
-        # display(image)
+        # display(image)  # Uncomment if display is needed
 
-        #print target mask
-        mask_dir = "/home/crcvreu.student10/SEM/train/output/"
-        label_name = mask_dir + os.path.basename(os.path.splitext(filename)[0]) + '_label.npy'
+        # Print target mask
+        label_name = mask_dir / (file_path.stem + '_label.npy')
         label_np = np.load(label_name)
-        label = torch.from_numpy(label_np) # convert label to tensor
+        label = torch.from_numpy(label_np)  # Convert label to tensor
         target_np = label.cpu().numpy().squeeze()
         label_mask = get_mask(target_np)
         label_mask = cv.resize(cv.cvtColor(label_mask, cv.COLOR_BGR2RGB), (1024, 768))
-        # label_mask = cv.resize(label_mask, (1024, 768))
-        # cv2.imshow('ground truth mask', label_mask)
-        imsave(os.path.join("/home/crcvreu.student10/SEM/masks/target", os.path.splitext(os.path.basename(file_path))[0] + "_target.png"), pred_mask)
+        target_mask_path = target_mask_dir / (file_path.stem + "_target.png")
+        imsave(target_mask_path, label_mask)
 
-        # print predicted mask
+        # Print predicted mask
         image = grayscale(image)
         image = trans(image)
         image = image.to(device)
         image = image.unsqueeze(0)
-        # print('predicted')
-        # print("IMAGE DIMS: ", image.shape)
         pred = model(image)
-        pred = F.softmax(pred, dim=1)
+        pred = torch.nn.functional.softmax(pred, dim=1)
         pred = torch.argmax(pred, dim=1)
         pred = pred.cpu().numpy().squeeze()
         pred_mask = get_mask(pred)
-        # pred_mask = cv.cvtColor(pred_mask, cv.COLOR_BGR2RGB)
-        # cv2.imshow('predicted mask', pred_mask)
-        # Save images as PNG files with epoch number in the filename
-        # os.makedirs("/home/crcvreu.student10/SEM/masks/final", exist_ok=True)
-        imsave(os.path.join("/home/crcvreu.student10/SEM/masks/final", os.path.splitext(os.path.basename(file_path))[0] + "_final.png"), pred_mask)
+        final_mask_path = final_mask_dir / (file_path.stem + "_final.png")
+        imsave(final_mask_path, pred_mask)
 
         plt.clf()
-        label = np.load(Path(mask_dir + "/" + os.path.splitext(os.path.basename(file_path))[0] + "_label.npy"))
+        label = np.load(mask_dir / (file_path.stem + "_label.npy"))
         m = MultiLabelBinarizer().fit(label)
         f1 = f1_score(m.transform(label), m.transform(pred), average=None)
         if len(f1) != 6:
@@ -847,5 +839,6 @@ for filename in os.listdir(img_dir):
         for i, class_name in enumerate(classes):
             f1_dict[class_name].append(f1[i])
         print(f1_dict)
+
 for class_name in classes:
     print(class_name, np.mean(f1_dict[class_name]))
