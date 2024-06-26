@@ -315,7 +315,7 @@ def save_images(data, output, target, epoch, testflag):
         save the original image, ground_truth/ target mask, and predicted mask
     '''
     # save_folder = "/home/crcvreu.student10/SEM_python/masks/"
-    save_folder = "/home/crcvreu.student10/SEM/masks/"
+    save_folder = "/home/crcvreu.student10/run/base_SEM/masks/"
     
     # Convert tensors to numpy arrays
     for i in range(len(data)):
@@ -558,10 +558,10 @@ def run_main(FLAGS, file):
     file.write("\n\nTorch device selected: " + str(device) + '\n')
     # Initialize the model and send to device
     model = UNet_PV().to(device)
-    save_folder = "/home/crcvreu.student10/SEM/masks"
+    save_folder = "/home/crcvreu.student10/run/base_SEM/masks"
     # Create the folder if it doesn't exist
     # os.makedirs(save_folder, exist_ok=True)
-    checkpoint_folder = "/home/crcvreu.student10/SEM/checkpoints"
+    checkpoint_folder = "/home/crcvreu.student10/run/base_SEM/checkpoints"
     # os.makedirs(checkpoint_folder, exist_ok=True)
     optimizer = optim.Adam(model.parameters(), lr=FLAGS.learning_rate)
             # higher weight decay = lower overfitting
@@ -575,12 +575,12 @@ def run_main(FLAGS, file):
     class_weights = torch.Tensor([1, 1, 1.5, 1, 1.5, 1.5]).to(device)
 
     #################### LOAD DATA ####################
-    image_dir = '/home/crcvreu.student10/SEM/data/'
-    label_dir = '/home/crcvreu.student10/SEM/output'
-    train_image_dir = '/home/crcvreu.student10/SEM/train/data/'
-    train_label_dir = '/home/crcvreu.student10/SEM/train/output/'
-    test_image_dir = '/home/crcvreu.student10/SEM/test/data/'
-    test_label_dir = '/home/crcvreu.student10/SEM/test/output/'
+    image_dir = '/home/crcvreu.student10/run/base_SEM/data/'
+    label_dir = '/home/crcvreu.student10/run/base_SEM/output'
+    train_image_dir = '/home/crcvreu.student10/run/base_SEM/train/data/'
+    train_label_dir = '/home/crcvreu.student10/run/base_SEM/train/output/'
+    test_image_dir = '/home/crcvreu.student10/run/base_SEM/test/data/'
+    test_label_dir = '/home/crcvreu.student10/run/base_SEM/test/output/'
 
     # Split data into training and test sets
     # split_data(image_dir, label_dir, train_image_dir, train_label_dir, test_image_dir, test_label_dir)
@@ -596,7 +596,7 @@ def run_main(FLAGS, file):
                              shuffle=False, num_workers=2)
 
     best_accuracy = 0.0
-    checkpoint_path = '/home/crcvreu.student10/SEM/checkpoints/model_filled2.pth'
+    checkpoint_path = '/home/crcvreu.student10/run/base_SEM/checkpoints/model_filled2.pth'
     train_losses = []           # store losses per epoch
     train_accs = []             # store accuracy per epoch
     train_f1_class_scores = []  # store f1_score of each class in each image per epoch
@@ -674,7 +674,7 @@ def run_main(FLAGS, file):
                     print("Early stopping triggered")
                     break
 
-    torch.save(model, '/home/crcvreu.student10/SEM/final_model_filled2.pth')
+    torch.save(model, '/home/crcvreu.student10/run/base_SEM/final_model_filled2.pth')
     print("Training and evaluation finished")
 
     plt.plot(train_losses, label='train loss')
@@ -684,7 +684,7 @@ def run_main(FLAGS, file):
     plt.title('Train and Test Losses')
     plt.legend()
     plt.grid(True)
-    plt.savefig("/home/crcvreu.student10/SEM/graphs/Train_Test_loss_model.jpg")
+    plt.savefig("/home/crcvreu.student10/run/base_SEM/graphs/Train_Test_loss_model.jpg")
     plt.clf()
     # plt.show()
 
@@ -695,7 +695,7 @@ def run_main(FLAGS, file):
     plt.title('Train and Test Accuracy')
     plt.legend()
     plt.grid(True)
-    plt.savefig("/home/crcvreu.student10/SEM/graphs/Train_Test_acc_model.jpg")
+    plt.savefig("/home/crcvreu.student10/run/base_SEM/graphs/Train_Test_acc_model.jpg")
     plt.clf()
     plt.show()
 
@@ -710,7 +710,7 @@ def run_main(FLAGS, file):
     plt.title('Train F1 per class')
     plt.legend(classes, loc='upper left')
     plt.grid(True)
-    plt.savefig("/home/crcvreu.student10/SEM/graphs/Train_f1_per_class_model.jpg")
+    plt.savefig("/home/crcvreu.student10/run/base_SEM/graphs/Train_f1_per_class_model.jpg")
     plt.clf()
     # plt.show()
 
@@ -723,7 +723,7 @@ def run_main(FLAGS, file):
     plt.title('Test F1 per class')
     plt.legend(classes, loc='upper left')
     plt.grid(True)
-    plt.savefig("/home/crcvreu.student10/SEM/graphs/Test_f1_per_class_model.jpg")
+    plt.savefig("/home/crcvreu.student10/run/base_SEM/graphs/Test_f1_per_class_model.jpg")
     plt.clf()
     # plt.show()
 
@@ -732,7 +732,7 @@ def run_main(FLAGS, file):
     plt.ylabel('Train F1')
     plt.title('Train F1 Scores')
     plt.grid(True)
-    plt.savefig("/home/crcvreu.student10/SEM/graphs/Train_f1_model.jpg")
+    plt.savefig("/home/crcvreu.student10/run/base_SEM/graphs/Train_f1_model.jpg")
     plt.clf()
     # plt.show()
 
@@ -741,7 +741,7 @@ def run_main(FLAGS, file):
     plt.ylabel('Test F1')
     plt.title('Test F1 Scores')
     plt.grid(True)
-    plt.savefig("/home/crcvreu.student10/SEM/graphs/Test_f1_model.jpg")
+    plt.savefig("/home/crcvreu.student10/run/base_SEM/graphs/Test_f1_model.jpg")
     plt.clf()
     # plt.show()
 
@@ -786,7 +786,7 @@ use_cuda = torch.cuda.is_available()
 device = torch.device("cuda" if use_cuda else "cpu")
 
 model = UNet_PV().to(device)
-model = torch.load('/home/crcvreu.student10/SEM/final_model_filled2.pth')
+model = torch.load('/home/crcvreu.student10/run/base_SEM/final_model_filled2.pth')
 model.eval()
 
 trans = transforms.Compose([
@@ -797,7 +797,7 @@ trans = transforms.Compose([
 classes = ["background", "silver", "glass", "silicon", "void", "interfacial void"]
 f1_dict = {"background":[], "silver":[], "glass":[], "silicon":[], "void":[], "interfacial void":[]}
 
-img_dir = '/home/crcvreu.student10/SEM/train/data/'
+img_dir = '/home/crcvreu.student10/run/base_SEM/train/data/'
 for filename in os.listdir(img_dir):
   file_path = Path(img_dir + filename)
   if file_path.suffix == '.png' or file_path.suffix == '.tif' or file_path.suffix == '.jpg':
@@ -809,7 +809,7 @@ for filename in os.listdir(img_dir):
         # display(image)
 
         #print target mask
-        mask_dir = "/home/crcvreu.student10/SEM/train/output/"
+        mask_dir = "/home/crcvreu.student10/run/base_SEM/train/output/"
         label_name = mask_dir + os.path.basename(os.path.splitext(filename)[0]) + '_label.npy'
         label_np = np.load(label_name)
         label = torch.from_numpy(label_np) # convert label to tensor
@@ -818,7 +818,7 @@ for filename in os.listdir(img_dir):
         label_mask = cv.resize(cv.cvtColor(label_mask, cv.COLOR_BGR2RGB), (1024, 768))
         # label_mask = cv.resize(label_mask, (1024, 768))
         # cv2.imshow('ground truth mask', label_mask)
-        imsave(os.path.join("/home/crcvreu.student10/SEM/masks/target", os.path.splitext(os.path.basename(file_path))[0] + "_target.png"), pred_mask)
+        imsave(os.path.join("/home/crcvreu.student10/run/base_SEM/masks/target", os.path.splitext(os.path.basename(file_path))[0] + "_target.png"), pred_mask)
 
         # print predicted mask
         image = grayscale(image)
@@ -835,8 +835,8 @@ for filename in os.listdir(img_dir):
         # pred_mask = cv.cvtColor(pred_mask, cv.COLOR_BGR2RGB)
         # cv2.imshow('predicted mask', pred_mask)
         # Save images as PNG files with epoch number in the filename
-        # os.makedirs("/home/crcvreu.student10/SEM/masks/final", exist_ok=True)
-        imsave(os.path.join("/home/crcvreu.student10/SEM/masks/final", os.path.splitext(os.path.basename(file_path))[0] + "_final.png"), pred_mask)
+        # os.makedirs("/home/crcvreu.student10/run/base_SEM/masks/final", exist_ok=True)
+        imsave(os.path.join("/home/crcvreu.student10/run/base_SEM/masks/final", os.path.splitext(os.path.basename(file_path))[0] + "_final.png"), pred_mask)
 
         plt.clf()
         label = np.load(Path(mask_dir + "/" + os.path.splitext(os.path.basename(file_path))[0] + "_label.npy"))
