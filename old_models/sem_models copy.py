@@ -4,6 +4,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 import glob
 
+import segmentation_models_pytorch as smp
+# from segmentation_models_pytorch.encoders import get_preprocessing_fn
+
 import os
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader, Dataset
@@ -29,224 +32,8 @@ from pathlib import Path
 from sklearn.preprocessing import MultiLabelBinarizer
 import cv2 as cv
 
-class UNet_PV(nn.Module):
-    def __init__(self):
-        super(UNet_PV, self).__init__()
-        ######################## DEFINE THE LAYERS ########################
-        self.dropout = nn.Dropout(p=0.3)
-        # encoder layers (convolution)
-        self.max_pool = nn.MaxPool2d(kernel_size=2)
-        self.enc1 = nn.LazyConv2d(64, 3, 1, 1)
-        self.enc1b = nn.LazyConv2d(64, 3, 1, 1)
-        self.enc2 = nn.LazyConv2d(128, 3, 1, 1)
-        self.enc2b = nn.LazyConv2d(128, 3, 1, 1)
-        self.enc3 = nn.LazyConv2d(256, 3, 1, 1)
-        self.enc3b = nn.LazyConv2d(256, 3, 1, 1)
-        self.enc4 = nn.LazyConv2d(512, 3, 1, 1)
-        self.enc4b = nn.LazyConv2d(512, 3, 1, 1)
+# preprocess_input = get_preprocessing_fn('resnet18', pretrained='imagenet')
 
-        # bottleneck
-        self.enc5 = nn.LazyConv2d(1024, 3, 1, 1)
-        self.enc5b = nn.LazyConv2d(1024, 3, 1, 1)
-
-        # decoder layers (deconvolution)
-        # up-convolution (2x2)
-        self.dec1 = nn.LazyConvTranspose2d(512, 2, 2, 0)
-        self.dec1b = nn.LazyConvTranspose2d(512, 2, 2, 0)
-        self.dec2 = nn.LazyConvTranspose2d(256, 2, 2, 0)
-        self.dec2b = nn.LazyConvTranspose2d(256, 2, 2, 0)
-        self.dec3 = nn.LazyConvTranspose2d(128, 2, 2, 0)
-        self.dec3b = nn.LazyConvTranspose2d(128, 2, 2, 0)
-        self.dec4 = nn.LazyConvTranspose2d(64, 2, 2, 0)
-        self.dec4b = nn.LazyConvTranspose2d(64, 2, 2, 0)
-        # convolution (3x3)
-        self.conv1a = nn.LazyConv2d(64, 3, 1, 1)
-        self.conv1b = nn.LazyConv2d(64, 3, 1, 1)
-        self.conv2a = nn.LazyConv2d(128, 3, 1, 1)
-        self.conv2b = nn.LazyConv2d(128, 3, 1, 1)
-        self.conv3a = nn.LazyConv2d(256, 3, 1, 1)
-        self.conv3b = nn.LazyConv2d(256, 3, 1, 1)
-        self.conv4a = nn.LazyConv2d(512, 3, 1, 1)
-        self.conv4b = nn.LazyConv2d(512, 3, 1, 1)
-        self.conv5a = nn.LazyConv2d(1024, 3, 1, 1)
-        self.conv5b = nn.LazyConv2d(1024, 3, 1, 1)
-
-        # output map (6 classes)
-        self.out = nn.LazyConv2d(6, 1, 1, 0)
-        self.forward = self.build_unet_model
-
-    # essentially just adding relu to all of our conv (enc and conv)
-        # (the dec is convTranspose)
-    def double_conv_block1(self, x):
-        # Conv2D then ReLU activation
-        x = F.relu(self.enc1(x))
-        x = F.relu(self.enc1b(x))
-        return x
-    def double_conv_block2(self, x):
-        x = F.relu(self.enc2(x))
-        x = F.relu(self.enc2b(x))
-        return x
-    def double_conv_block3(self, x):
-        x = F.relu(self.enc3(x))
-        x = F.relu(self.enc3b(x))
-        return x
-    def double_conv_block4(self, x):
-        x = F.relu(self.enc4(x))
-        x = F.relu(self.enc4b(x))
-        return x
-    def double_conv_block5(self, x):
-        x = F.relu(self.enc5(x))
-        x = F.relu(self.enc5b(x))
-        return x
-    def up_double_conv_block1(self, x):
-        x = F.relu(self.conv5a(x))
-        x = F.relu(self.conv5b(x))
-        return x
-    def up_double_conv_block2(self, x):
-        x = F.relu(self.conv4a(x))
-        x = F.relu(self.conv4b(x))
-        return x
-    def up_double_conv_block3(self, x):
-        x = F.relu(self.conv3a(x))
-        x = F.relu(self.conv3b(x))
-        return x
-    def up_double_conv_block4(self, x):
-        x = F.relu(self.conv2a(x))
-        x = F.relu(self.conv2b(x))
-        return x
-
-    # Now that we have defined our layers (with ReLu), we can build our blocks
-    #################### Contracting path (Encoder) ####################
-    '''
-    * captures contextual information and reduces spatial resolution of the input
-    * downsampling: converting a high resolution image to a low resolution image
-          * helps the model better understand "WHAT" is present in the image, but it loses the information of "WHERE" it is present
-            the pooling (and convolution) operation both reduce the size of the image
-          # identifies relevant info
-    * structure: double convolution, max pooling, dropout
-    # double the number of filters in each layer
-    '''
-    def downsample_block1(self, x):
-        f = self.double_conv_block1(x) # f: feature map after the double conv block
-        p = self.max_pool(f)           # p: downsampled feature map
-            # reduces the spatial dimenstions but not the depth
-        p = self.dropout(p)
-            # regularization technique that randomly "drops" some weights in training to prevent overfitting/ boost generalization
-        return f, p
-            # f: provides detailed, high-res features
-                  # later passed (through skip connections) to recoder to maintain detail and improve accuracy
-            # p: allows network to learn more abstract and general features while preventing overfitting
-    def downsample_block2(self, x):
-        f = self.double_conv_block2(x)
-        p = self.max_pool(f)
-        p = self.dropout(p)
-        return f, p
-    def downsample_block3(self, x):
-        f = self.double_conv_block3(x)
-        p = self.max_pool(f)
-        p = self.dropout(p)
-        return f, p
-    def downsample_block4(self, x):
-        f = self.double_conv_block4(x)
-        p = self.max_pool(f)
-        p = self.dropout(p)
-        return f, p
-
-    #################### Bottleneck ####################
-    def bottleneck_conv(self, x):
-      x = F.relu(self.enc5(x))
-      x = F.relu(self.enc5b(x))
-      return x
-
-    #################### Expansive path (Decoder) ####################
-    '''
-    * takes the bottleneck feature map and converts it back to size of original input image
-    * upsampling: converting the low resolution image to a high resolution image
-          * Since downsampling results in us losing the "WHERE" information, we recover the "WHERE" information by upsampling
-          * methods: bi-linear interpolation, cubic interpolation, nearest neighbor interpolation, unpooling, transposed convolution (preferred)
-    '''
-    def upsample_block1(self, x, conv_features):
-        # ********* UPSAMPLE *********
-        x = self.dec1(x)                              # deconvolution/ upconvolution
-        # ********* CONCATENATE *********
-        # conv_features.size(): gets the size (dimensions) of the tensor
-            # the tensor is from the corresponding layer in the encoder
-        # x.size: size of x, the upsampled feature map from the prev layer in decoder
-        diffY = conv_features.size()[2] - x.size()[2] # difference in height
-        diffX = conv_features.size()[3] - x.size()[3] # difference in width
-
-        # pad x to match the dimensions of conv_features (we want to return img back to OG size)
-        x = F.pad(x, [diffX // 2, diffX - diffX // 2, # pads elements on l and r to match width
-                  diffY // 2, diffY - diffY // 2])    # pads elts on top and bottom to match height
-        x = torch.cat([x, conv_features], dim=1)      # concatenates x and conv_features
-        # ********* DROPOUT *********
-        x = self.dropout(x)
-        # ********* Conv2D twice with ReLU activation *********
-        x = self.up_double_conv_block1(x)             # integrate the high-level features
-        return x
-    def upsample_block2(self, x, conv_features):
-        x = self.dec2(x)
-        diffY = conv_features.size()[2] - x.size()[2]
-        diffX = conv_features.size()[3] - x.size()[3]
-        x = F.pad(x, [diffX // 2, diffX - diffX // 2,
-                  diffY // 2, diffY - diffY // 2])
-
-        x = torch.cat([x, conv_features], dim=1)
-        x = self.dropout(x)
-        x = self.up_double_conv_block2(x)
-        return x
-    def upsample_block3(self, x, conv_features):
-        x = self.dec3(x)
-        diffY = conv_features.size()[2] - x.size()[2]
-        diffX = conv_features.size()[3] - x.size()[3]
-        x = F.pad(x, [diffX // 2, diffX - diffX // 2,
-                  diffY // 2, diffY - diffY // 2])
-
-        x = torch.cat([x, conv_features], dim=1)
-        x = self.dropout(x)
-        x = self.up_double_conv_block3(x)
-        return x
-    def upsample_block4(self, x, conv_features):
-        x = self.dec4(x)
-        diffY = conv_features.size()[2] - x.size()[2]
-        diffX = conv_features.size()[3] - x.size()[3]
-        x = F.pad(x, [diffX // 2, diffX - diffX // 2,
-                  diffY // 2, diffY - diffY // 2])
-
-        x = torch.cat([x, conv_features], dim=1)
-        x = self.dropout(x)
-        x = self.up_double_conv_block4(x)
-        return x
-
-    ########################### PUT IT ALL TOGETHER ###########################
-    def build_unet_model(self, input):
-        # inputs
-        inputs = input
-        # encoder: contracting path - downsample
-        # 1 - downsample
-        f1, p1 = self.downsample_block1(inputs)
-        # 2 - downsample
-        f2, p2 = self.downsample_block2(p1)
-        # 3 - downsample
-        f3, p3 = self.downsample_block3(p2)
-        # 4 - downsample
-        f4, p4 = self.downsample_block4(p3)
-        # 5 - bottleneck
-        bottleneck = self.double_conv_block5(p4)
-        # decoder: expanding path - upsample
-        # 6 - upsample
-        u6 = self.upsample_block1(bottleneck, f4)
-        # 7 - upsample
-        u7 = self.upsample_block2(u6, f3)
-        # 8 - upsample
-        u8 = self.upsample_block3(u7, f2)
-        # 9 - upsample
-        u9 = self.upsample_block4(u8, f1)
-        # outputs
-        outputs = self.out(u9)
-
-        return outputs
-   
 class PVDataset(Dataset):
     def __init__(self, img_dir, label_dir, transform=None, target_transform=None):
         self.img_dir = img_dir
@@ -315,7 +102,7 @@ def save_images(data, output, target, epoch, testflag):
         save the original image, ground_truth/ target mask, and predicted mask
     '''
     # save_folder = "/home/crcvreu.student10/SEM_python/masks/"
-    save_folder = "/home/crcvreu.student10/SEM/masks/"
+    save_folder = Path("/home/crcvreu.student10/run/sem_models/masks/")
     
     # Convert tensors to numpy arrays
     for i in range(len(data)):
@@ -331,17 +118,22 @@ def save_images(data, output, target, epoch, testflag):
         # get_mask(): convert the mask to color
         pred_mask = get_mask(output_np)
         label_mask = get_mask(target_np)
+        label_mask = cv.resize(label_mask, (1024, 768))
 
         data_np = data_np * 255
         data_np = data_np.astype(np.uint8)
 
         # Save images as PNG files with epoch number in the filename
-        imsave(os.path.join(save_folder, f'epoch_{epoch}_predicted.png'), pred_mask)
+        predicted_filename = save_folder / f'epoch_{epoch}_predicted.png'
+        imsave(predicted_filename, pred_mask)
 
-        # save original and target images at beginning of run
+        # Save original and target images at beginning of run
         if epoch == 1:
-            imsave(os.path.join(save_folder, 'original.png'), data_np)
-            imsave(os.path.join(save_folder, 'target.png'), label_mask)
+            original_filename = save_folder / 'original.png'
+            target_filename = save_folder / 'target.png'
+            
+            imsave(original_filename, data_np)
+            imsave(target_filename, label_mask)
 
 def multi_acc(pred, label):
     '''
@@ -429,7 +221,7 @@ def train(model, device, train_loader, optimizer, criterion, epoch, batch_size, 
 
     # if some classes are not present in the images, pad them with 0s
     for i in range(len(f1_scores_class)):
-        if len(f1_scores_class[i]) < 6: #6 = number of classes
+        if len(f1_scores_class[i]) < 6: # 5 classes + background
             f1_scores_class[i] = np.pad(f1_scores_class[i], (0, 6 - len(f1_scores_class[i])), mode='constant')
 
     train_f1_class = np.mean(f1_scores_class, axis=0)
@@ -517,11 +309,15 @@ def test(model, device, test_loader, file, epoch, class_weights):
     return test_loss, test_acc, test_f1_class, test_f1
 
 def split_data(image_dir, label_dir, train_image_dir, train_label_dir, test_image_dir, test_label_dir, test_size=0.2):
-    images = [f for f in os.listdir(image_dir) if f.endswith(('.png', '.jpg'))]
-    labels = [f for f in os.listdir(label_dir) if f.endswith('.npy')]
+    # Get images and labels
+    images = [f for f in image_dir.iterdir() if f.suffix in ('.png', '.jpg')]
+    labels = [f for f in label_dir.iterdir() if f.suffix == '.npy']
 
-    image_bases = {os.path.splitext(f)[0] for f in images}
-    label_bases = {os.path.splitext(f)[0].replace('_label', '') for f in labels}
+    # Get base names
+    image_bases = {f.stem for f in images}
+    label_bases = {f.stem.replace('_label', '') for f in labels}
+
+    # Find common bases
     common_bases = list(image_bases & label_bases)
 
     print(f"Found {len(common_bases)} common images and labels.")
@@ -534,20 +330,104 @@ def split_data(image_dir, label_dir, train_image_dir, train_label_dir, test_imag
 
     train_images, test_images, train_labels, test_labels = train_test_split(images, labels, test_size=test_size, random_state=42)
 
-    # os.makedirs(train_image_dir, exist_ok=True)
-    # os.makedirs(train_label_dir, exist_ok=True)
-    # os.makedirs(test_image_dir, exist_ok=True)
-    # os.makedirs(test_label_dir, exist_ok=True)
-
     for image, label in zip(train_images, train_labels):
-        shutil.move(os.path.join(image_dir, image), os.path.join(train_image_dir, image))
-        shutil.move(os.path.join(label_dir, label), os.path.join(train_label_dir, label))
+        shutil.move(image_dir / image, train_image_dir / image)
+        shutil.move(label_dir / label, train_label_dir / label)
 
+    # Move test images and labels
     for image, label in zip(test_images, test_labels):
-        shutil.move(os.path.join(image_dir, image), os.path.join(test_image_dir, image))
-        shutil.move(os.path.join(label_dir, label), os.path.join(test_label_dir, label))
-
+        shutil.move(image_dir / image, test_image_dir / image)
+        shutil.move(label_dir / label, test_label_dir / label)
     print(f"Moved {len(train_images)} images to training set and {len(test_images)} images to test set.")
+
+def evaluation(f):
+    # Check if cuda is available
+    use_cuda = torch.cuda.is_available()
+    # Set proper device based on cuda availability
+    device = torch.device("cuda" if use_cuda else "cpu")
+
+    UNet_PV = smp.Unet(
+        encoder_name="resnet34",        # choose encoder, e.g. mobilenet_v2 or efficientnet-b7
+        encoder_weights="imagenet",     # use `imagenet` pre-trained weights for encoder initialization
+        in_channels=1,                  # model input channels (1 for gray-scale images, 3 for RGB, etc.)
+        classes=6,                      # model output channels (number of classes in your dataset)
+    )
+    model = UNet_PV.to(device)
+    # model = smp.Unet()
+    # model = model.to(device)
+    model = torch.load('/home/crcvreu.student10/run/sem_models/final_model_filled2.pth')
+    model.eval()
+
+    classes = ["background", "silver", "glass", "silicon", "void", "interfacial void"]
+    f1_dict = {"background":[], "silver":[], "glass":[], "silicon":[], "void":[], "interfacial void":[]}
+
+    img_dir = Path('/home/crcvreu.student10/run/sem_models/test/data/')
+    mask_dir = Path("/home/crcvreu.student10/run/sem_models/test/output/")
+    target_mask_dir = Path("/home/crcvreu.student10/run/sem_models/masks/target/")
+    final_mask_dir = Path("/home/crcvreu.student10/run/sem_models/masks/final/")
+
+    # Process images
+    # Initialize f1_dict
+    f1_dict = {class_name: [] for class_name in classes}
+    f1_all = []
+    for file_path in img_dir.iterdir():
+        if file_path.suffix in {'.png', '.tif', '.jpg'}:
+            # Print OG photo
+            print(file_path.name)
+            f.write(str(file_path.name) + '\n')
+            image = Image.open(file_path)
+            image = image.resize((1024, 768))
+            plt.clf()
+            # display(image)  # Uncomment if display is needed
+
+            # Print target mask
+            label_name = mask_dir / (file_path.stem + '_label.npy')
+            label_np = np.load(label_name)
+            label = torch.from_numpy(label_np)  # Convert label to tensor
+            target_np = label.cpu().numpy().squeeze()
+            label_mask = get_mask(target_np)
+            # label_mask = cv.resize(cv.cvtColor(label_mask, cv.COLOR_BGR2RGB), (1024, 768))
+            label_mask = cv.resize(label_mask, (1024, 768))
+            target_mask_path = target_mask_dir / (file_path.stem + "_target.png")
+            imsave(target_mask_path, label_mask)
+
+            trans = transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Normalize((0.5), (0.5))
+            ])
+
+            # Print predicted mask
+            image = grayscale(image)
+            image = trans(image)
+            image = image.to(device)
+            image = image.unsqueeze(0)
+            pred = model(image)
+            pred = torch.nn.functional.softmax(pred, dim=1)
+            pred = torch.argmax(pred, dim=1)
+            pred = pred.cpu().numpy().squeeze()
+            pred_mask = get_mask(pred)
+            final_mask_path = final_mask_dir / (file_path.stem + "_final.png")
+            imsave(final_mask_path, pred_mask)
+
+            plt.clf()
+            label = np.load(mask_dir / (file_path.stem + "_label.npy"))
+            m = MultiLabelBinarizer().fit(label)
+            f1 = f1_score(m.transform(label), m.transform(pred), average=None)
+            f1_weighted = f1_score(m.transform(label), m.transform(pred), average='weighted')
+            f1_all.append(f1_weighted)
+            if len(f1) != 6:
+                continue
+            for i, class_name in enumerate(classes):
+                f1_dict[class_name].append(f1[i])
+            print(f1_dict)
+            f.write(str(f1_dict) + '\n')
+            f.write(str(file_path) + ' : ' + str(f1_all))
+
+    for class_name in classes:
+        mean_f1 = np.mean(f1_dict[class_name])
+        print(class_name, mean_f1)
+        f.write(f'{class_name}: {mean_f1}\n') 
+    return
 
 def run_main(FLAGS, file):
     # Check if cuda is available
@@ -556,13 +436,17 @@ def run_main(FLAGS, file):
     device = torch.device("cuda" if use_cuda else "cpu")
     print("Torch device selected: ", device)
     file.write("\n\nTorch device selected: " + str(device) + '\n')
+
     # Initialize the model and send to device
-    model = UNet_PV().to(device)
-    save_folder = "/home/crcvreu.student10/SEM/masks"
-    # Create the folder if it doesn't exist
-    # os.makedirs(save_folder, exist_ok=True)
-    checkpoint_folder = "/home/crcvreu.student10/SEM/checkpoints"
-    # os.makedirs(checkpoint_folder, exist_ok=True)
+    UNet_PV = smp.Unet(
+        encoder_name="resnet34",        # choose encoder, e.g. mobilenet_v2 or efficientnet-b7
+        encoder_weights="imagenet",     # use `imagenet` pre-trained weights for encoder initialization
+        in_channels=1,                  # model input channels (1 for gray-scale images, 3 for RGB, etc.)
+        classes=6,                      # model output channels (number of classes in your dataset)
+    )
+    model = UNet_PV.to(device)
+    save_folder = "/home/crcvreu.student10/run/sem_models/masks"
+    checkpoint_folder = "/home/crcvreu.student10/run/sem_models/checkpoints"
     optimizer = optim.Adam(model.parameters(), lr=FLAGS.learning_rate)
             # higher weight decay = lower overfitting
 
@@ -575,18 +459,17 @@ def run_main(FLAGS, file):
     class_weights = torch.Tensor([1, 1, 1.5, 1, 1.5, 1.5]).to(device)
 
     #################### LOAD DATA ####################
-    image_dir = '/home/crcvreu.student10/SEM/data/'
-    label_dir = '/home/crcvreu.student10/SEM/output'
-    train_image_dir = '/home/crcvreu.student10/SEM/train/data/'
-    train_label_dir = '/home/crcvreu.student10/SEM/train/output/'
-    test_image_dir = '/home/crcvreu.student10/SEM/test/data/'
-    test_label_dir = '/home/crcvreu.student10/SEM/test/output/'
+    # image_dir = '/home/crcvreu.student10/run/sem_models/data/'
+    # label_dir = '/home/crcvreu.student10/run/sem_models/output'
+    train_image_dir = '/home/crcvreu.student10/run/sem_models/train/data/'
+    train_label_dir = '/home/crcvreu.student10/run/sem_models/train/output/'
+    test_image_dir = '/home/crcvreu.student10/run/sem_models/test/data/'
+    test_label_dir = '/home/crcvreu.student10/run/sem_models/test/output/'
 
     # Split data into training and test sets
     # split_data(image_dir, label_dir, train_image_dir, train_label_dir, test_image_dir, test_label_dir)
 
     # Load datasets for training and testing
-    # Inbuilt datasets available in torchvision (check documentation online)
     dataset1 = PVDataset(train_image_dir, train_label_dir, transform=transform)
     dataset2 = PVDataset(test_image_dir, test_label_dir, transform=transform)
 
@@ -596,7 +479,7 @@ def run_main(FLAGS, file):
                              shuffle=False, num_workers=2)
 
     best_accuracy = 0.0
-    checkpoint_path = '/home/crcvreu.student10/SEM/checkpoints/model_filled2.pth'
+    checkpoint_path = '/home/crcvreu.student10/run/sem_models/checkpoints/model_filled2.pth'
     train_losses = []           # store losses per epoch
     train_accs = []             # store accuracy per epoch
     train_f1_class_scores = []  # store f1_score of each class in each image per epoch
@@ -674,7 +557,7 @@ def run_main(FLAGS, file):
                     print("Early stopping triggered")
                     break
 
-    torch.save(model, '/home/crcvreu.student10/SEM/final_model_filled2.pth')
+    torch.save(model, '/home/crcvreu.student10/run/sem_models/final_model_filled2.pth')
     print("Training and evaluation finished")
 
     plt.plot(train_losses, label='train loss')
@@ -684,9 +567,9 @@ def run_main(FLAGS, file):
     plt.title('Train and Test Losses')
     plt.legend()
     plt.grid(True)
-    plt.savefig("/home/crcvreu.student10/SEM/graphs/Train_Test_loss_model.jpg")
+    plt.ylim(0,1)
+    plt.savefig("/home/crcvreu.student10/run/sem_models/graphs/Train_Test_loss_model.jpg")
     plt.clf()
-    # plt.show()
 
     plt.plot(train_accs, label='train accuracy')
     plt.plot(test_accs, label='test accuracy')
@@ -695,9 +578,9 @@ def run_main(FLAGS, file):
     plt.title('Train and Test Accuracy')
     plt.legend()
     plt.grid(True)
-    plt.savefig("/home/crcvreu.student10/SEM/graphs/Train_Test_acc_model.jpg")
+    plt.ylim(0,1)
+    plt.savefig("/home/crcvreu.student10/run/sem_models/graphs/Train_Test_acc_model.jpg")
     plt.clf()
-    plt.show()
 
     num_classes = len(train_f1_class_scores[0]) # 6
     epochs = range(1, len(train_f1_class_scores) + 1)
@@ -710,9 +593,9 @@ def run_main(FLAGS, file):
     plt.title('Train F1 per class')
     plt.legend(classes, loc='upper left')
     plt.grid(True)
-    plt.savefig("/home/crcvreu.student10/SEM/graphs/Train_f1_per_class_model.jpg")
+    plt.ylim(0,1)
+    plt.savefig("/home/crcvreu.student10/run/sem_models/graphs/Train_f1_per_class_model.jpg")
     plt.clf()
-    # plt.show()
 
     # plt.plot(test_f1_class_scores)
     for class_idx in range(num_classes):
@@ -723,29 +606,24 @@ def run_main(FLAGS, file):
     plt.title('Test F1 per class')
     plt.legend(classes, loc='upper left')
     plt.grid(True)
-    plt.savefig("/home/crcvreu.student10/SEM/graphs/Test_f1_per_class_model.jpg")
+    plt.ylim(0,1)
+    plt.savefig("/home/crcvreu.student10/run/sem_models/graphs/Test_f1_per_class_model.jpg")
     plt.clf()
-    # plt.show()
 
-    plt.plot(train_f1_scores)
+    plt.plot(train_f1_scores, label = 'train f1 accuracy')
+    plt.plot(test_f1_scores, label='test f1 accuracy')
     plt.xlabel('Epochs')
-    plt.ylabel('Train F1')
-    plt.title('Train F1 Scores')
+    plt.ylabel('F1')
+    plt.legend()
+    plt.title('Train and Test F1 Scores')
     plt.grid(True)
-    plt.savefig("/home/crcvreu.student10/SEM/graphs/Train_f1_model.jpg")
+    plt.ylim(0,1)
+    plt.savefig("/home/crcvreu.student10/run/sem_models/graphs/Train_Test_f1_model.jpg")
     plt.clf()
-    # plt.show()
+    file.write("\nTraining finished")
 
-    plt.plot(test_f1_scores)
-    plt.xlabel('Epochs')
-    plt.ylabel('Test F1')
-    plt.title('Test F1 Scores')
-    plt.grid(True)
-    plt.savefig("/home/crcvreu.student10/SEM/graphs/Test_f1_model.jpg")
-    plt.clf()
-    # plt.show()
-
-    file.write("\nTraining and evaluation finished")
+    evaluation(file)
+    print('main done')
 
 if __name__ == '__main__':
     torch.set_printoptions(threshold=10000)
@@ -762,7 +640,7 @@ if __name__ == '__main__':
                         default=300,
                         help='Number of epochs to run trainer.')
     parser.add_argument('--batch_size',
-                        type=int, default=2,
+                        type=int, default=1,
                         help='Batch size. Must divide evenly into the dataset sizes.')
     parser.add_argument('--log_dir',
                         type=str,
@@ -778,74 +656,3 @@ if __name__ == '__main__':
         FLAGS, unparsed = parser.parse_known_args()
 
         run_main(FLAGS, f)
-
-print('main done')
-# Check if cuda is available
-use_cuda = torch.cuda.is_available()
-# Set proper device based on cuda availability
-device = torch.device("cuda" if use_cuda else "cpu")
-
-model = UNet_PV().to(device)
-model = torch.load('/home/crcvreu.student10/SEM/final_model_filled2.pth')
-model.eval()
-
-trans = transforms.Compose([
-    transforms.ToTensor(),
-    transforms.Normalize((0.5), (0.5))
- ])
-
-classes = ["background", "silver", "glass", "silicon", "void", "interfacial void"]
-f1_dict = {"background":[], "silver":[], "glass":[], "silicon":[], "void":[], "interfacial void":[]}
-
-img_dir = '/home/crcvreu.student10/SEM/train/data/'
-for filename in os.listdir(img_dir):
-  file_path = Path(img_dir + filename)
-  if file_path.suffix == '.png' or file_path.suffix == '.tif' or file_path.suffix == '.jpg':
-        # Print OG photo
-        print(filename)
-        image = Image.open(file_path)
-        image = image.resize((1024, 768))
-        plt.clf()
-        # display(image)
-
-        #print target mask
-        mask_dir = "/home/crcvreu.student10/SEM/train/output/"
-        label_name = mask_dir + os.path.basename(os.path.splitext(filename)[0]) + '_label.npy'
-        label_np = np.load(label_name)
-        label = torch.from_numpy(label_np) # convert label to tensor
-        target_np = label.cpu().numpy().squeeze()
-        label_mask = get_mask(target_np)
-        label_mask = cv.resize(cv.cvtColor(label_mask, cv.COLOR_BGR2RGB), (1024, 768))
-        # label_mask = cv.resize(label_mask, (1024, 768))
-        # cv2.imshow('ground truth mask', label_mask)
-        imsave(os.path.join("/home/crcvreu.student10/SEM/masks/target", os.path.splitext(os.path.basename(file_path))[0] + "_target.png"), pred_mask)
-
-        # print predicted mask
-        image = grayscale(image)
-        image = trans(image)
-        image = image.to(device)
-        image = image.unsqueeze(0)
-        # print('predicted')
-        # print("IMAGE DIMS: ", image.shape)
-        pred = model(image)
-        pred = F.softmax(pred, dim=1)
-        pred = torch.argmax(pred, dim=1)
-        pred = pred.cpu().numpy().squeeze()
-        pred_mask = get_mask(pred)
-        # pred_mask = cv.cvtColor(pred_mask, cv.COLOR_BGR2RGB)
-        # cv2.imshow('predicted mask', pred_mask)
-        # Save images as PNG files with epoch number in the filename
-        # os.makedirs("/home/crcvreu.student10/SEM/masks/final", exist_ok=True)
-        imsave(os.path.join("/home/crcvreu.student10/SEM/masks/final", os.path.splitext(os.path.basename(file_path))[0] + "_final.png"), pred_mask)
-
-        plt.clf()
-        label = np.load(Path(mask_dir + "/" + os.path.splitext(os.path.basename(file_path))[0] + "_label.npy"))
-        m = MultiLabelBinarizer().fit(label)
-        f1 = f1_score(m.transform(label), m.transform(pred), average=None)
-        if len(f1) != 6:
-            continue
-        for i, class_name in enumerate(classes):
-            f1_dict[class_name].append(f1[i])
-        print(f1_dict)
-for class_name in classes:
-    print(class_name, np.mean(f1_dict[class_name]))
