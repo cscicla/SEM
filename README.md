@@ -10,9 +10,21 @@ The provided dataset consists of 66 images to train on. Each image (.png or .jpe
 # Changes:
 * Split data between training (80% dataset) and test (20% dataset). This will move the images from the image_dir to either test_data or train_data and their corresponding npy labels from label_dir to either test_output or train_output.
 
-# Problems
+# RUNNING THE CODE:
+* 1. create the following directories
+    * checkpoints
+    * graphs
+    * masks/target
+    * masks/predicted
+    * train/data train/output
+    * test/data test/output
+* 2. replace file/directory paths to users
+* 3. run slurm (sbatch) or srun
+    * example of srun: 
 
-# Directories
+
+
+# Directories in GitHub
 * masks/target directory: stores the masks ground truth masks as images for references
 * masks/predicted directory: stores the results of the model's predictions after evaluation
 * output1 directory: stores the labels as json/ csv files
@@ -28,7 +40,11 @@ The provided dataset consists of 66 images to train on. Each image (.png or .jpe
     * segformer_practice.slurm: used to run the tutorial code
 * old_models directory: used to keep track of older models/ python codes
 
-# Files
+# Files in GitHub
+* '*.err' files hold the errors recieved when running the code
+* output.txt file holds the output (loss per epoch, etc.)
+    * some files have a f1results.txt that has the evaluation f1 scores
+        * some of these scores were put into output.txt
 * segformer_hugdata.py
     * used to add own dataset to HuggingFace
 * sem_unet_plus.py
