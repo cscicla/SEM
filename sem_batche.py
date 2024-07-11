@@ -41,7 +41,7 @@ class PVDataset(Dataset):
         self.image_list = glob.glob(img_dir + '*.png')
         self.image_list.extend(glob.glob(img_dir + '*.jpg'))
         self.image_list.extend(glob.glob(img_dir + '*.tif'))
-
+        random.shuffle(self.image_list)
         self.transform = transform
         self.target_transform = target_transform
 
@@ -102,7 +102,7 @@ def save_images(data, output, target, epoch, testflag):
         save the original image, ground_truth/ target mask, and predicted mask
     '''
     # save_folder = "/home/crcvreu.student10/SEM_python/masks/"
-    save_folder = Path("/home/crcvreu.student10/run/sem_unet_plus/masks/")
+    save_folder = Path("/home/crcvreu.student10/run/sem_batche/masks/")
     
     # Convert tensors to numpy arrays
     for i in range(len(data)):
@@ -356,8 +356,8 @@ def run_main(FLAGS, file):
         classes=6,                      # model output channels (number of classes in your dataset)
     )
     model = UNet_PV.to(device)
-    save_folder = "/home/crcvreu.student10/run/sem_unet_plus/masks"
-    checkpoint_folder = "/home/crcvreu.student10/run/sem_unet_plus/checkpoints"
+    save_folder = "/home/crcvreu.student10/run/sem_batche/masks"
+    checkpoint_folder = "/home/crcvreu.student10/run/sem_batche/checkpoints"
     optimizer = optim.Adam(model.parameters(), lr=FLAGS.learning_rate)
             # higher weight decay = lower overfitting
 
@@ -370,12 +370,12 @@ def run_main(FLAGS, file):
     class_weights = torch.Tensor([1, 1, 1.5, 1, 1.5, 1.5]).to(device)
 
     #################### LOAD DATA ####################
-    # image_dir = '/home/crcvreu.student10/run/sem_unet_plus/data/'
-    # label_dir = '/home/crcvreu.student10/run/sem_unet_plus/output'
-    train_image_dir = '/home/crcvreu.student10/run/sem_unet_plus/train/data/'
-    train_label_dir = '/home/crcvreu.student10/run/sem_unet_plus/train/output/'
-    test_image_dir = '/home/crcvreu.student10/run/sem_unet_plus/test/data/'
-    test_label_dir = '/home/crcvreu.student10/run/sem_unet_plus/test/output/'
+    # image_dir = '/home/crcvreu.student10/run/sem_batche/data/'
+    # label_dir = '/home/crcvreu.student10/run/sem_batche/output'
+    train_image_dir = '/home/crcvreu.student10/run/sem_batche/train/data/'
+    train_label_dir = '/home/crcvreu.student10/run/sem_batche/train/output/'
+    test_image_dir = '/home/crcvreu.student10/run/sem_batche/test/data/'
+    test_label_dir = '/home/crcvreu.student10/run/sem_batche/test/output/'
 
     # Split data into training and test sets
     # split_data(image_dir, label_dir, train_image_dir, train_label_dir, test_image_dir, test_label_dir)
@@ -385,12 +385,12 @@ def run_main(FLAGS, file):
     dataset2 = PVDataset(test_image_dir, test_label_dir, transform=transform)
 
     train_loader = DataLoader(dataset1, batch_size=FLAGS.batch_size,
-                              shuffle=True, num_workers=2)
+                              shuffle=False, num_workers=2)
     test_loader = DataLoader(dataset2, batch_size=FLAGS.batch_size,
                              shuffle=False, num_workers=2)
 
     best_accuracy = 0.0
-    checkpoint_path = '/home/crcvreu.student10/run/sem_unet_plus/checkpoints/model_filled2.pth'
+    checkpoint_path = '/home/crcvreu.student10/run/sem_batche/checkpoints/model_filled2.pth'
     train_losses = []           # store losses per epoch
     train_accs = []             # store accuracy per epoch
     train_f1_class_scores = []  # store f1_score of each class in each image per epoch
@@ -468,7 +468,7 @@ def run_main(FLAGS, file):
                     print("Early stopping triggered")
                     break
 
-    torch.save(model, '/home/crcvreu.student10/run/sem_unet_plus/final_model_filled2.pth')
+    torch.save(model, '/home/crcvreu.student10/run/sem_batche/final_model_filled2.pth')
     print("Training and evaluation finished")
 
     plt.plot(train_losses, label='train loss')
@@ -479,7 +479,7 @@ def run_main(FLAGS, file):
     plt.legend()
     plt.grid(True)
     plt.ylim(0,1)
-    plt.savefig("/home/crcvreu.student10/run/sem_unet_plus/graphs/Train_Test_loss_model.jpg")
+    plt.savefig("/home/crcvreu.student10/run/sem_batche/graphs/Train_Test_loss_model.jpg")
     plt.clf()
 
     plt.plot(train_accs, label='train accuracy')
@@ -490,7 +490,7 @@ def run_main(FLAGS, file):
     plt.legend()
     plt.grid(True)
     plt.ylim(0,1)
-    plt.savefig("/home/crcvreu.student10/run/sem_unet_plus/graphs/Train_Test_acc_model.jpg")
+    plt.savefig("/home/crcvreu.student10/run/sem_batche/graphs/Train_Test_acc_model.jpg")
     plt.clf()
 
     num_classes = len(train_f1_class_scores[0]) # 6
@@ -505,7 +505,7 @@ def run_main(FLAGS, file):
     plt.legend(classes, loc='upper left')
     plt.grid(True)
     plt.ylim(0,1)
-    plt.savefig("/home/crcvreu.student10/run/sem_unet_plus/graphs/Train_f1_per_class_model.jpg")
+    plt.savefig("/home/crcvreu.student10/run/sem_batche/graphs/Train_f1_per_class_model.jpg")
     plt.clf()
 
     # plt.plot(test_f1_class_scores)
@@ -518,7 +518,7 @@ def run_main(FLAGS, file):
     plt.legend(classes, loc='upper left')
     plt.grid(True)
     plt.ylim(0,1)
-    plt.savefig("/home/crcvreu.student10/run/sem_unet_plus/graphs/Test_f1_per_class_model.jpg")
+    plt.savefig("/home/crcvreu.student10/run/sem_batche/graphs/Test_f1_per_class_model.jpg")
     plt.clf()
 
     plt.plot(train_f1_scores, label = 'train f1 accuracy')
@@ -529,7 +529,7 @@ def run_main(FLAGS, file):
     plt.title('Train and Test F1 Scores')
     plt.grid(True)
     plt.ylim(0,1)
-    plt.savefig("/home/crcvreu.student10/run/sem_unet_plus/graphs/Train_Test_f1_model.jpg")
+    plt.savefig("/home/crcvreu.student10/run/sem_batche/graphs/Train_Test_f1_model.jpg")
     plt.clf()
 
     file.write("\nTraining and evaluation finished")
@@ -542,21 +542,21 @@ if __name__ == '__main__':
                         type=int, default=1,
                         help='Select mode between 1-5.')
     parser.add_argument('--learning_rate',
-                        type=float, default=0.00005,
+                        type=float, default=0.0001,
                         help='Initial learning rate.')
     parser.add_argument('--num_epochs',
                         type=int,
-                        default=300,
+                        default=280,
                         help='Number of epochs to run trainer.')
     parser.add_argument('--batch_size',
-                        type=int, default=1,
+                        type=int, default=6,
                         help='Batch size. Must divide evenly into the dataset sizes.')
     parser.add_argument('--log_dir',
                         type=str,
                         default='logs',
                         help='Directory to put logging.')
     parser.add_argument('--early_stopping_patience',
-                        type=float, default=0,
+                        type=float, default=20,
                         help= 'Num epochs to wait for lower loss before ending training')
     
     with open('output.txt', 'a') as f:
@@ -573,7 +573,7 @@ use_cuda = torch.cuda.is_available()
 device = torch.device("cuda" if use_cuda else "cpu")
 
 UNet_PV = smp.UnetPlusPlus(
-    encoder_name="resnet34",        # choose encoder, e.g. mobilenet_v2 or efficientnet-b7
+    encoder_name="resnet50",        # choose encoder, e.g. mobilenet_v2 or efficientnet-b7
     encoder_weights="imagenet",     # use `imagenet` pre-trained weights for encoder initialization
     in_channels=1,                  # model input channels (1 for gray-scale images, 3 for RGB, etc.)
     classes=6,                      # model output channels (number of classes in your dataset)
@@ -581,16 +581,16 @@ UNet_PV = smp.UnetPlusPlus(
 model = UNet_PV.to(device)
 # model = smp.Unet()
 # model = model.to(device)
-model = torch.load('/home/crcvreu.student10/run/sem_unet_plus/final_model_filled2.pth')
+model = torch.load('/home/crcvreu.student10/run/sem_batche/final_model_filled2.pth')
 model.eval()
 
 classes = ["background", "silver", "glass", "silicon", "void", "interfacial void"]
 f1_dict = {"background":[], "silver":[], "glass":[], "silicon":[], "void":[], "interfacial void":[]}
 
-img_dir = Path('/home/crcvreu.student10/run/sem_unet_plus/test/data/')
-mask_dir = Path("/home/crcvreu.student10/run/sem_unet_plus/test/output/")
-target_mask_dir = Path("/home/crcvreu.student10/run/sem_unet_plus/masks/target/")
-final_mask_dir = Path("/home/crcvreu.student10/run/sem_unet_plus/masks/final/")
+img_dir = Path('/home/crcvreu.student10/run/sem_batche/test/data/')
+mask_dir = Path("/home/crcvreu.student10/run/sem_batche/test/output/")
+target_mask_dir = Path("/home/crcvreu.student10/run/sem_batche/masks/target/")
+final_mask_dir = Path("/home/crcvreu.student10/run/sem_batche/masks/final/")
 
 # Process images
 with open('f1results.txt', 'a') as file_output:
@@ -651,3 +651,4 @@ with open('f1results.txt', 'a') as file_output:
         print(class_name, mean_f1)
         file_output.write(f'{class_name}: {mean_f1}\n')
         
+

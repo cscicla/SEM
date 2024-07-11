@@ -163,13 +163,14 @@ def train(model, device, train_loader, optimizer, criterion, epoch, batch_size, 
     f1_scores = []  # weighted f1_score of each image in the epoch
 
     # Set model to train mode before each epoch
-    model.train()
+    model.train() # method in PyTorch that sets the model to training mode
+    # activates dropout and batch norm
 
     # Iterate over entire training samples (1 epoch)
     for batch_idx, batch_sample in enumerate(train_loader):
         data, target = batch_sample # data: input, target: ground truth
 
-        # Push data/label to correct device
+        # Push data/label to correct device (ensures all tensors are on same device)
         data = data.to(device)
         target = target.to(device)
 
@@ -195,7 +196,7 @@ def train(model, device, train_loader, optimizer, criterion, epoch, batch_size, 
         loss.backward()
         output = torch.argmax(output, dim=1)
               # eg. output after finding which had class had the highest probability for each elt
-              #     output = tensor([2, 1, 0])
+              #     output = tensor([2, 1, 0, 2, 0, etc.])
 
         losses.append(loss.item())      # store loss
         acc = multi_acc(output, target).cpu()
@@ -247,7 +248,7 @@ def test(model, device, test_loader, file, epoch, class_weights):
     '''
 
     # Set model to eval mode to notify all layers.
-    model.eval()
+    model.eval() # sets drop layers off and sets batch norm to use learned stats
 
     losses = []     # loss of each image in the epoch
     accs = []       # accuracy of each image in the epoch
@@ -348,7 +349,7 @@ def evaluation(f):
 
     UNet_PV = smp.Unet(
         encoder_name="resnet34",        # choose encoder, e.g. mobilenet_v2 or efficientnet-b7
-        encoder_weights="imagenet",     # use `imagenet` pre-trained weights for encoder initialization
+        # encoder_weights="imagenet",     # use `imagenet` pre-trained weights for encoder initialization
         in_channels=1,                  # model input channels (1 for gray-scale images, 3 for RGB, etc.)
         classes=6,                      # model output channels (number of classes in your dataset)
     )
@@ -453,8 +454,10 @@ def run_main(FLAGS, file):
     # Create transformations to apply to each data sample
     transform = transforms.Compose([
         transforms.ToTensor(),
-        transforms.Normalize((0.5), (0.5))
+        transforms.Normalize((0.5), (0.5)) # normalizes data to mean of 0.5 and standard deviation of 0.5 
          ])
+    # Normalization allows the data to converge faster. When data is on a similar scale, the gradients are more uniform.
+    # Also, reduces the bias in training as no feature dominates due to its scale.
     criterion=L.DiceLoss('multiclass')
     class_weights = torch.Tensor([1, 1, 1.5, 1, 1.5, 1.5]).to(device)
 
@@ -474,9 +477,11 @@ def run_main(FLAGS, file):
     dataset2 = PVDataset(test_image_dir, test_label_dir, transform=transform)
 
     train_loader = DataLoader(dataset1, batch_size=FLAGS.batch_size,
-                              shuffle=True, num_workers=2)
+                              shuffle=False, num_workers=2)
     test_loader = DataLoader(dataset2, batch_size=FLAGS.batch_size,
                              shuffle=False, num_workers=2)
+    # DataLoader is a PyTorch utility that batches the data, randomly shuffles the data at each epoch to ensure the model does 
+    # not learn the order of the data, and utilizes multiple worker threads to load data in parallel
 
     best_accuracy = 0.0
     checkpoint_path = '/home/crcvreu.student10/run/sem_models/checkpoints/model_filled2.pth'

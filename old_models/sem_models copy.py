@@ -15,7 +15,8 @@ import numpy as np
 from PIL import Image
 from matplotlib.pyplot import imsave, imshow
 
-from sklearn.metrics import f1_score
+from sklearn.metrics import f1_score, confusion_matrix
+import seaborn as sns
 
 import shutil
 from sklearn.model_selection import train_test_split
@@ -163,13 +164,14 @@ def train(model, device, train_loader, optimizer, criterion, epoch, batch_size, 
     f1_scores = []  # weighted f1_score of each image in the epoch
 
     # Set model to train mode before each epoch
-    model.train()
+    model.train() # method in PyTorch that sets the model to training mode
+    # activates dropout and batch norm
 
     # Iterate over entire training samples (1 epoch)
     for batch_idx, batch_sample in enumerate(train_loader):
         data, target = batch_sample # data: input, target: ground truth
 
-        # Push data/label to correct device
+        # Push data/label to correct device (ensures all tensors are on same device)
         data = data.to(device)
         target = target.to(device)
 
@@ -195,7 +197,7 @@ def train(model, device, train_loader, optimizer, criterion, epoch, batch_size, 
         loss.backward()
         output = torch.argmax(output, dim=1)
               # eg. output after finding which had class had the highest probability for each elt
-              #     output = tensor([2, 1, 0])
+              #     output = tensor([2, 1, 0, 2, 0, etc.])
 
         losses.append(loss.item())      # store loss
         acc = multi_acc(output, target).cpu()
@@ -245,9 +247,10 @@ def test(model, device, test_loader, file, epoch, class_weights):
     device: 'cuda' or 'cpu'.
     test_loader: dataloader for test samples.
     '''
+    classes = ["background", "silver", "glass", "silicon", "void", "interfacial void"]
 
     # Set model to eval mode to notify all layers.
-    model.eval()
+    model.eval() # sets drop layers off and sets batch norm to use learned stats
 
     losses = []     # loss of each image in the epoch
     accs = []       # accuracy of each image in the epoch
@@ -284,7 +287,14 @@ def test(model, device, test_loader, file, epoch, class_weights):
 
             f1_weighted = f1_score(y_true=target1.numpy(), y_pred=output1.cpu().numpy(), average='weighted')
             f1_scores.append(f1_weighted)         # store weighted f1
-
+    cm = confusion_matrix(y_true=target1.numpy(), y_pred=output1.cpu().numpy())
+       # Plot confusion matrix
+    plt.figure(figsize=(8, 6))
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=classes, yticklabels=classes)
+    plt.xlabel('Predicted')
+    plt.ylabel('True')
+    plt.title('Confusion Matrix')
+    plt.show()
 
     save_images(data, output, target, epoch, True)  # save predicted masks
     test_loss = float(np.mean(losses))
@@ -369,6 +379,7 @@ def evaluation(f):
     # Process images
     # Initialize f1_dict
     f1_dict = {class_name: [] for class_name in classes}
+    confusion_matrices = {class_name: np.zeros((6, 6), dtype=int) for class_name in classes}
     f1_all = []
     for file_path in img_dir.iterdir():
         if file_path.suffix in {'.png', '.tif', '.jpg'}:
@@ -419,6 +430,7 @@ def evaluation(f):
                 continue
             for i, class_name in enumerate(classes):
                 f1_dict[class_name].append(f1[i])
+                confusion_matrices[class_name] += confusion_matrix(label.flatten(), pred.flatten(), labels=[0, 1, 2, 3, 4, 5])
             print(f1_dict)
             f.write(str(f1_dict) + '\n')
             f.write(str(file_path) + ' : ' + str(f1_all))
@@ -427,6 +439,11 @@ def evaluation(f):
         mean_f1 = np.mean(f1_dict[class_name])
         print(class_name, mean_f1)
         f.write(f'{class_name}: {mean_f1}\n') 
+        print(f"Confusion Matrix for {class_name}:")
+        print(confusion_matrices[class_name])
+        f.write(f'{class_name}: {mean_f1}\n')
+        f.write(f"Confusion Matrix for {class_name}:\n")
+        f.write(f"{confusion_matrices[class_name]}\n")
     return
 
 def run_main(FLAGS, file):
@@ -453,8 +470,10 @@ def run_main(FLAGS, file):
     # Create transformations to apply to each data sample
     transform = transforms.Compose([
         transforms.ToTensor(),
-        transforms.Normalize((0.5), (0.5))
+        transforms.Normalize((0.5), (0.5)) # normalizes data to mean of 0.5 and standard deviation of 0.5 
          ])
+    # Normalization allows the data to converge faster. When data is on a similar scale, the gradients are more uniform.
+    # Also, reduces the bias in training as no feature dominates due to its scale.
     criterion=L.DiceLoss('multiclass')
     class_weights = torch.Tensor([1, 1, 1.5, 1, 1.5, 1.5]).to(device)
 
@@ -474,9 +493,11 @@ def run_main(FLAGS, file):
     dataset2 = PVDataset(test_image_dir, test_label_dir, transform=transform)
 
     train_loader = DataLoader(dataset1, batch_size=FLAGS.batch_size,
-                              shuffle=True, num_workers=2)
+                              shuffle=False, num_workers=2)
     test_loader = DataLoader(dataset2, batch_size=FLAGS.batch_size,
                              shuffle=False, num_workers=2)
+    # DataLoader is a PyTorch utility that batches the data, randomly shuffles the data at each epoch to ensure the model does 
+    # not learn the order of the data, and utilizes multiple worker threads to load data in parallel
 
     best_accuracy = 0.0
     checkpoint_path = '/home/crcvreu.student10/run/sem_models/checkpoints/model_filled2.pth'
